@@ -1,0 +1,21 @@
+name: SkyblockPrime
+main: dev.krutz.mc.skyblock.Main
+version: 1.0
+api-version: 1.21
+description: A Skyblock plugin remade for Paper Minecraft 1.21.3
+authors:
+  - GoshJosh
+commands:
+  island:
+    description: Teleport to your Skyblock island
+    usage: /island
+  spawn:
+    description: Teleport to the spawn
+    usage: /spawn
+  challenge:
+    aliases: [c]
+    description: Manage and complete challenges.
+    usage: |
+      /challenge list
+      /challenge complete <challengeName>
+      /challenge c <challengeName>
