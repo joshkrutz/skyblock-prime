@@ -67,6 +67,8 @@ public class IslandListener implements Listener {
         Action action = event.getAction();
         Block block = event.getClickedBlock();
 
+        if (player.isOp()) return;
+
         // Need to update to block non-block interactions (e.g. snowballs, ender pearls, eggs)
         if (block == null) return;
 
