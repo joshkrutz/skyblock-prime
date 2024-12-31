@@ -9,11 +9,17 @@
   <name>skyblock-prime</name>
   <url>http://maven.apache.org</url>
 
+  <properties>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
+  </properties>
+
   <repositories>
     <repository>
       <id>papermc-repo</id>
       <url>https://repo.papermc.io/repository/maven-public/</url>
     </repository>
+
   </repositories>
 
   <dependencies>
@@ -29,6 +35,7 @@
       <version>LATEST</version>
     </dependency>
   </dependencies>
+  
 
   <build>
       <plugins>

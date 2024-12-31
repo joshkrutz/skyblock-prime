@@ -8,7 +8,7 @@ import org.bukkit.Location;
 
 import java.util.Random;
 
-public class WorldGenerator extends ChunkGenerator {
+public class SkyblockWorldGenerator extends ChunkGenerator {
     @Override
     public boolean shouldGenerateNoise() {
         return false;

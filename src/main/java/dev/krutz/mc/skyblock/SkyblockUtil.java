@@ -1,6 +1,10 @@
 package dev.krutz.mc.skyblock;
 
-public class ChallengeUtil {
+import java.awt.Component;
+
+import net.md_5.bungee.api.chat.ComponentBuilder;
+
+public class SkyblockUtil {
 
     public static class ComplexityHue {
         private final float startHue;
@@ -28,4 +32,9 @@ public class ChallengeUtil {
 
         return new ComplexityHue(hueStart, hueEnd);
     }
+
+    // public Component generateIncorrectSyntaxMessage(String command, String feedback, String usage) {
+    //     ComponentBuilder builder = new ComponentBuilder();
+    //     builder.append(feedback);
+    // }
 }

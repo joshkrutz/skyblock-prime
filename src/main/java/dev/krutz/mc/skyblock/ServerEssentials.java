@@ -1,6 +1,7 @@
 package dev.krutz.mc.skyblock;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.command.Command;
@@ -8,8 +9,17 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.md_5.bungee.api.ChatColor;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,76 +31,59 @@ import java.util.Map;
 
 public class ServerEssentials {
 
-    private final Main plugin;
+    private static JavaPlugin plugin;
 
-    public ServerEssentials(Main plugin) {
-        this.plugin = plugin;
+    public static void initialize(JavaPlugin pluginInstance) {
+        plugin = pluginInstance;
         loadServerData();
     }
 
-    public void loadServerData() {
+    public static void loadServerData() {
         
     }
 
-    public boolean handleEssentialsCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (command.getName().equalsIgnoreCase("spawn")) {
-            if(!(sender instanceof Player)) {
-                sender.sendMessage("Only players can use this command!");
-                return true;
-            }
+    private static Component getCommandComponent(String command, String description) {
+        return Component.text("\n  * ")
+            .color(TextColor.color(NamedTextColor.DARK_PURPLE)) // Bullet color
+            .append(
+                Component.text(command)
+                    .color(TextColor.color(NamedTextColor.LIGHT_PURPLE)) // Command color
+                    .clickEvent(ClickEvent.runCommand(command)) // Click to execute
+                    .hoverEvent(
+                        HoverEvent.showText(
+                            Component.text("Click to execute: ")
+                                .color(TextColor.color(NamedTextColor.GOLD))
+                                .append(Component.text(command).color(TextColor.color(NamedTextColor.RED)))
+                        )
+                    )
+            )
+            .append(
+                Component.text(" - " + description)
+                    .color(TextColor.color(NamedTextColor.DARK_PURPLE)) // Description color
+            ).decoration(TextDecoration.BOLD, false);
+    }
+    
+    public static void sendHelpMenu(CommandSender sender) {
+        Component message = Component.text("\n-======  Help Menu  ======-\n")
+            .color(TextColor.color(NamedTextColor.YELLOW))
+            .decoration(TextDecoration.BOLD, true) // Bold the title
+            .append(
+                Component.text("Click to execute a command or read more...\n")
+                    .color(TextColor.color(NamedTextColor.YELLOW))
+                    .decoration(TextDecoration.BOLD, false) // Remove bold for this part
+            )
+            .append(getCommandComponent("/spawn", "Teleport to the lobby."))
+            .append(getCommandComponent("/list", "List all online players."))
+            .append(getCommandComponent("/seen", "Check when a player was last online."))
+            .append(getCommandComponent("/home", "Teleport to your home location."))
+            .append(getCommandComponent("/island", "See information about your island."))
+            .append(getCommandComponent("/challenge list", "List all challenges."))
+            .append(Component.text("\n"));
 
-            Player player = (Player) sender;
-
-            teleportToSpawn(player);
-            return true;
-        }
-        else if(command.getName().equalsIgnoreCase("setspawn")) {
-            if(!(sender instanceof Player)) {
-                sender.sendMessage("Only players can use this command!");
-                return true;
-            }
-
-            Player player = (Player) sender;
-
-            if(player.hasPermission("skyblock.setspawn")) {
-                setSpawn(player);
-            } else {
-                player.sendMessage("You do not have permission to use this command.");
-            }
-            return true;
-        }
-        else if(command.getName().equalsIgnoreCase("sethome")) {
-            if(!(sender instanceof Player)) {
-                sender.sendMessage("Only players can use this command!");
-                return true;
-            }
-
-            Player player = (Player) sender;
-
-            if(player.hasPermission("skyblock.sethome")) {
-                setHome(player);
-            } else {
-                player.sendMessage("You do not have permission to use this command.");
-            }
-            return true;
-        }
-        else if(command.getName().equalsIgnoreCase("home")) {
-            if(!(sender instanceof Player)) {
-                sender.sendMessage("Only players can use this command!");
-                return true;
-            }
-
-            Player player = (Player) sender;
-
-            teleportToHome(player);
-            return true;
-        }
-
-
-        return false;
+        sender.sendMessage(message);
     }
 
-    private void teleportToSpawn(Player player) {
+    public static void teleportToSpawn(Player player) {
         World spawnWorld = Bukkit.getServer().getWorld(Main.spawnWorldName);
         if (spawnWorld != null) {
             player.teleport(spawnWorld.getSpawnLocation());
@@ -100,7 +93,7 @@ public class ServerEssentials {
         }
     }
 
-    private void setSpawn(Player player) {
+    public static void setSpawn(Player player) {
         World spawnWorld = Bukkit.getServer().getWorld(Main.spawnWorldName);
         if (spawnWorld != null) {
             spawnWorld.setSpawnLocation(player.getLocation());
@@ -110,13 +103,18 @@ public class ServerEssentials {
         }
     }
 
-    private void setHome(Player player) {
+    public static void setHome(Player player) {
         player.setRespawnLocation(player.getLocation(), true);
         player.sendMessage("You have set your home location.");
     }
 
-    private void teleportToHome(Player player) {
-        player.teleport(player.getRespawnLocation());
+    public static void teleportToHome(Player player) {
+
+        Location loc = player.getRespawnLocation();
+        if (loc == null) {
+            loc = player.getWorld().getSpawnLocation();
+        }
+        player.teleport(loc);
         player.sendMessage("You have been teleported to your home location.");
     }
 

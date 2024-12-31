@@ -36,4 +36,8 @@
       <scope>provided</scope>
     </dependency>
   </dependencies>
+  <properties>
+    <maven.compiler.target>21</maven.compiler.target>
+    <maven.compiler.source>21</maven.compiler.source>
+  </properties>
 </project>

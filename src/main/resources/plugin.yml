@@ -6,12 +6,28 @@ description: A Skyblock plugin remade for Paper Minecraft 1.21.3
 authors:
   - GoshJosh
 commands:
+  help:
+    description: Show the help menu
+    usage: /help
   island:
+    aliases: [is]
     description: Teleport to your Skyblock island
-    usage: /island
+    usage: |
+      /island create
+      /island home
+      /island restart
   spawn:
     description: Teleport to the spawn
     usage: /spawn
+  setspawn:
+    description: Set the spawn location
+    usage: /setspawn
+  home:
+    description: Teleport to your home
+    usage: /home
+  sethome:
+    description: Set your home location
+    usage: /sethome
   challenge:
     aliases: [c]
     description: Manage and complete challenges.

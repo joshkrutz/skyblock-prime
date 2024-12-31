@@ -7,13 +7,17 @@ import org.bukkit.block.ShulkerBox;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import dev.krutz.mc.skyblock.Challenge.ChallengeComplexity;
 import io.papermc.paper.text.PaperComponents;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 
+import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,16 +28,16 @@ import java.util.Map;
 
 public class ChallengeManager {
 
-    private final Map<String, Challenge> challenges = new HashMap<>();
-    private final Main plugin;
-
-    public ChallengeManager(Main plugin) {
-        this.plugin = plugin;
+    private static final Map<String, Challenge> challenges = new HashMap<>();
+    private static JavaPlugin plugin;
+    
+    public static void initialize(JavaPlugin pluginInstance) {
+        plugin = pluginInstance;
         loadChallenges();
     }
 
     // Load challenges from the JSON file
-    public void loadChallenges() {
+    public static void loadChallenges() {
         try {
             File configFile = new File(plugin.getDataFolder(), "challenges.json");
             if (!configFile.exists()) {
@@ -66,11 +70,11 @@ public class ChallengeManager {
         }
     }
 
-    public List<Challenge> getChallengeNamesByComplexity(String complexityStr){
+    private static List<Challenge> getChallengeNamesByComplexity(String complexityStr){
         return getChallengeNamesByComplexity(ChallengeComplexity.valueOf(complexityStr.toUpperCase()));
     }
 
-    public List<Challenge> getChallengeNamesByComplexity(ChallengeComplexity complexity){
+    private static List<Challenge> getChallengeNamesByComplexity(ChallengeComplexity complexity){
         List<Challenge> challengesByComplexity = new ArrayList<>();
         for (Challenge challenge : challenges.values()) {
             if (challenge.getComplexity() == complexity) {
@@ -80,7 +84,7 @@ public class ChallengeManager {
         return challengesByComplexity;
     }
 
-    private List<Requirement> parseRequirements(JSONArray array) {
+    private static List<Requirement> parseRequirements(JSONArray array) {
         List<Requirement> requirements = new ArrayList<>();
         if (array != null) {
             for (int i = 0; i < array.length(); i++) {
@@ -96,7 +100,7 @@ public class ChallengeManager {
         return requirements;
     }
 
-    private List<Reward> parseRewards(JSONArray array) {
+    private static List<Reward> parseRewards(JSONArray array) {
         List<Reward> rewards = new ArrayList<>();
         if (array != null) {
             for (int i = 0; i < array.length(); i++) {
@@ -120,11 +124,11 @@ public class ChallengeManager {
         return challengeNames;
     }
 
-    public Challenge getChallenge(String command) {
+    public static Challenge getChallenge(String command) {
         return challenges.get(command.toLowerCase());
     }
 
-    public boolean isValidCompletion(Player player, Challenge challenge) {
+    public static boolean isValidCompletion(Player player, Challenge challenge) {
         for (Requirement req : challenge.getRequirements()) {
             if ("item".equalsIgnoreCase(req.getType()) && !hasRequiredItem(player, req)) {
                 return false;
@@ -136,7 +140,7 @@ public class ChallengeManager {
         return true;
     }
 
-    private boolean hasRequiredItem(Player player, Requirement req) {
+    private static boolean hasRequiredItem(Player player, Requirement req) {
         int total = 0;
         for (ItemStack item : player.getInventory().getContents()) {
             if (item != null && item.getType() == Material.getMaterial(req.getName().toUpperCase())) {
@@ -148,7 +152,7 @@ public class ChallengeManager {
         return false;
     }
 
-    private void payRequirements(Player player, Challenge challenge)
+    private static void payRequirements(Player player, Challenge challenge)
     {
         // Remove requirements as necessary
         for (Requirement req : challenge.getRequirements()) {
@@ -161,7 +165,7 @@ public class ChallengeManager {
         }
     }
 
-    private void giveRewardAndUpdateLog(Player player, Challenge challenge, boolean isRepeatChallenge)
+    private static void giveRewardAndUpdateLog(Player player, Challenge challenge, boolean isRepeatChallenge)
     {
         List<Reward> rewardsToIssue = isRepeatChallenge ? challenge.getRepeatableRewards() : challenge.getRewards();
 
@@ -177,7 +181,7 @@ public class ChallengeManager {
 
     }
 
-    public void completeChallenge(Player player, Challenge challenge) {
+    public static void completeChallenge(Player player, Challenge challenge) {
         if (isValidCompletion(player, challenge)) 
         {
             if( !hasPlayerCompletedChallengeBefore(player.getUniqueId().toString(), challenge.getName()) )
@@ -210,7 +214,55 @@ public class ChallengeManager {
         
     }
 
-    private void updatePlayerCompletionLog(Player player, String challengeName){
+    
+    public static void listChallenges(Player player) {
+        for(String complexity : Challenge.ChallengeComplexity.getComplexityNames()){
+
+            String titleCaseComplexity = complexity.substring(0, 1).toUpperCase() + complexity.substring(1).toLowerCase();
+            // Get the hue for the complexity
+            SkyblockUtil.ComplexityHue hues = SkyblockUtil.getHueStartAndStopFromComplexity(Challenge.ChallengeComplexity.valueOf(complexity));
+            float hueStart = hues.getStartHue();
+            float hueStop = hues.getStopHue();
+            float saturation = 0.5f;
+            float brightness = 0.9f;
+
+            Color incomplete = Color.getHSBColor(hueStart, saturation, brightness);
+            Color complete = Color.getHSBColor(hueStop, saturation, brightness);
+
+            List<Challenge> challengesPerComplexity = getChallengeNamesByComplexity(complexity);
+            if (challengesPerComplexity.isEmpty()) {
+                continue;
+            }
+            player.sendMessage(Component.text(titleCaseComplexity + " Challenges:"));
+
+            Component message = Component.empty();
+            for (Challenge challenge : challengesPerComplexity) {
+                Color color = incomplete;
+                String hexColor = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+                if (hasPlayerCompletedChallengeBefore(player.getUniqueId().toString(), challenge.getName())) {
+                    color = complete;
+                    hexColor = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+                    if (!challenge.isRepeatable()) {
+                        // Cross out the text
+                        message = message.append(
+                            Component.text(challenge.getName()).color(TextColor.fromHexString(hexColor)).decoration(TextDecoration.STRIKETHROUGH, true)
+                        ).append(Component.text(", "));
+                        continue;
+                    }                    
+                }
+                message = message.append(
+                    Component.text(challenge.getName()).color(TextColor.fromHexString(hexColor)));
+
+                // if not last challenge, add a comma
+                if (challengesPerComplexity.indexOf(challenge) != challengesPerComplexity.size() - 1) {
+                    message = message.append(Component.text(", "));
+                }
+            }
+            player.sendMessage(message);
+        }
+    }
+
+    private static void updatePlayerCompletionLog(Player player, String challengeName){
         String uuid = player.getUniqueId().toString();
 
         File playerDataFile = new File(plugin.getDataFolder(), "player-data.json");
@@ -272,7 +324,7 @@ public class ChallengeManager {
         }
     }
 
-    public boolean hasPlayerCompletedChallengeBefore(String uuid, String challengeName) {
+    public static boolean hasPlayerCompletedChallengeBefore(String uuid, String challengeName) {
         File playerDataFile = new File(plugin.getDataFolder(), "player-data.json");
         if (!playerDataFile.exists())
             createPlayerDataFile();
@@ -301,7 +353,7 @@ public class ChallengeManager {
         return false;
     }
 
-    private void createPlayerDataFile(){
+    private static void createPlayerDataFile(){
         File playerDataFile = new File(plugin.getDataFolder(), "player-data.json");
         try {
             JSONObject jsonObject = new JSONObject();
@@ -313,7 +365,7 @@ public class ChallengeManager {
         }
     }
 
-    public void createChallenge(Player player, String challengeName){
+    public static void createChallenge(Player player, String challengeName){
         try {
             File configFile = new File(plugin.getDataFolder(), "challenges.json");
             
@@ -421,6 +473,30 @@ public class ChallengeManager {
 
         } catch (IOException e) {
             plugin.getLogger().severe("Could not write challenges.json: " + e.getMessage());
+        }
+    }
+
+    public static void resetPlayerChallenges(Player player) {
+        File playerDataFile = new File(plugin.getDataFolder(), "player-data.json");
+        if (!playerDataFile.exists())
+            return;
+
+        try {
+            String jsonContent = Files.readString(playerDataFile.toPath());
+            JSONObject jsonObject = new JSONObject(jsonContent);
+            JSONArray playerArray = jsonObject.getJSONArray("players");
+
+            for (int i = 0; i < playerArray.length(); i++) {
+                JSONObject playerObject = playerArray.getJSONObject(i);
+                if (playerObject.getString("uuid").equals(player.getUniqueId().toString())) {
+                    playerObject.put("completed_challenges", new JSONArray());
+                    break;
+                }
+            }
+
+            Files.writeString(playerDataFile.toPath(), jsonObject.toString(4));
+        } catch (IOException e) {
+            plugin.getLogger().severe("Could not read player-data.json: " + e.getMessage());
         }
     }
 }
