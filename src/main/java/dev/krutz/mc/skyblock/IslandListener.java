@@ -3,8 +3,6 @@ package dev.krutz.mc.skyblock;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -31,6 +29,13 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 
+// KNOWN ISSUES: 
+// - Pressure plate detection is not implemented, so players can still use them outside their island
+// - Potions can be thrown outside the island
+// - Animals/entites can be killed, bred, sheared, ridden, (take armor and saddles) leashed outside their island
+// - Player can interact with donkeys/mules (and access chests) outside their island
+// - Player can interact with minecarts with hoppers and chests outside their island
+// - Player can pick up items and 
 
 public class IslandListener implements Listener {
 
@@ -88,17 +93,24 @@ public class IslandListener implements Listener {
         }
 
         // Handle interacting with blocks (right-clicking interactable blocks)
-        if (action == Action.RIGHT_CLICK_BLOCK && !player.isSneaking()) {
+        if (action == Action.RIGHT_CLICK_BLOCK) {
             if (!isWithinIsland) {
                 switch (blockType) {
                     case ENDER_CHEST:
+                    case TRAPPED_CHEST:
                     case BARREL:
                     case SHULKER_BOX:
                     case CHEST:
+                    case HOPPER:
+                    case HOPPER_MINECART:
+                    case CHEST_MINECART:
+                    case DISPENSER:
+                    case DROPPER:
                         player.sendMessage(Component.text("You can't open containers outside your island!").color(NamedTextColor.RED));
                         event.setCancelled(true);
                         return;
                     case ANVIL:
+                    case FURNACE_MINECART:
                     case CRAFTING_TABLE:
                     case BREWING_STAND:
                     case FLETCHING_TABLE:
@@ -128,8 +140,8 @@ public class IslandListener implements Listener {
                             event.setCancelled(true);
                             return;
                         }
-                        else if (blockType.name().contains("BUTTON") || blockType.name().contains("PRESSURE_PLATE")) {
-                            player.sendMessage(Component.text("You can't interact with buttons or pressure plates outside your island!").color(NamedTextColor.RED));
+                        else if (blockType.name().contains("BUTTON")) {
+                            player.sendMessage(Component.text("You can't interact with buttons outside your island!").color(NamedTextColor.RED));
                             event.setCancelled(true);
                             return;
                         }
