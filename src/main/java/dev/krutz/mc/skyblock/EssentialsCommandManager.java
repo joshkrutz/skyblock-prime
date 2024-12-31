@@ -1,8 +1,5 @@
 package dev.krutz.mc.skyblock;
 
-import java.util.Arrays;
-import java.util.List;
-
 import org.bukkit.entity.Player;
 
 public class EssentialsCommandManager {

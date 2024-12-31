@@ -1,6 +1,5 @@
 package dev.krutz.mc.skyblock;
 
-import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 

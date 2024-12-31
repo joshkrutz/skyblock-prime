@@ -1,6 +1,5 @@
 package dev.krutz.mc.skyblock;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.block.ShulkerBox;
@@ -12,7 +11,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import dev.krutz.mc.skyblock.Challenge.ChallengeComplexity;
-import io.papermc.paper.text.PaperComponents;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;

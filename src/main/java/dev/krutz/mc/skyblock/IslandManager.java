@@ -1,20 +1,15 @@
 package dev.krutz.mc.skyblock;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.TreeType;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -25,7 +20,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.util.Vector;
 import org.json.JSONObject;
 
 import org.json.JSONArray;
@@ -445,7 +439,6 @@ class Island {
     private static final int MAX_ISLANDS_PER_ROW = 10;
     private static final int Y_HEIGHT = 100; // Offset for island schematic
     private static final World SKYBLOCK_WORLD = Bukkit.getWorld(Main.skyblockOverworldName);
-    private static final World SPAWN_WORLD = Bukkit.getWorld(Main.spawnWorldName);
     private static final  ItemStack[] STARTER_CHEST_CONTENTS = {
         new ItemStack(Material.PUMPKIN_SEEDS),
         new ItemStack(Material.LAVA_BUCKET),

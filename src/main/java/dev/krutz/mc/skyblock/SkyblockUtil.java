@@ -1,9 +1,5 @@
 package dev.krutz.mc.skyblock;
 
-import java.awt.Component;
-
-import net.md_5.bungee.api.chat.ComponentBuilder;
-
 public class SkyblockUtil {
 
     public static class ComplexityHue {

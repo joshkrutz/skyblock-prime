@@ -1,8 +1,6 @@
 package dev.krutz.mc.skyblock;
 
-import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.World.Environment;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.Location;
 
