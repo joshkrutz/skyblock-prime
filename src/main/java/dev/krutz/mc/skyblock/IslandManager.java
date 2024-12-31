@@ -17,7 +17,6 @@ import org.bukkit.block.Chest;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Directional;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -466,7 +465,7 @@ class Island {
     // CONSTANTS NOT TO BE CONFIGURABLE
     public static final int BLOCKS_PER_CHUNK = 16;
     public static final int MINIMUM_Y = -64;
-    public static final int MAXIMUM_Y = 256;
+    public static final int MAXIMUM_Y = 320;
 
     // Islands instantiated with this constructor are assumed to be loaded from file
     public Island(int x, int z, String name, int index, String ownerUUID, List<String> friends, String enterMessage, String exitMessage, Location islandSpawn){
@@ -516,7 +515,9 @@ class Island {
 
         // Clear any entities within the island boundaries
         for (Entity entity : SKYBLOCK_WORLD.getEntities()) {
-            if (entity.getLocation().distance(center) <= CHUNK_ISLAND_RADIUS * BLOCKS_PER_CHUNK) {
+            Location centerAxis = center.clone();
+            centerAxis.setY(entity.getLocation().getY());
+            if (entity.getLocation().distance(centerAxis) <= CHUNK_ISLAND_RADIUS * BLOCKS_PER_CHUNK) {
                 // Remove all entities that are not players
                 if (!(entity instanceof Player)) {
                     entity.remove();
