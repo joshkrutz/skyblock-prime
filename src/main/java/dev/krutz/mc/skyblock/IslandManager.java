@@ -4,7 +4,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
@@ -27,6 +29,7 @@ import org.json.JSONArray;
 
 public class IslandManager {
     private static ArrayList<Island> islands = new ArrayList<>();
+    private static Map<String, Island> islandInvites = new HashMap<>();
 
     private static final String ISLANDS_FILE = "island-data.json"; // Path to your islands data file
 
@@ -238,14 +241,7 @@ public class IslandManager {
         }
 
         // Reset player's state
-        player.getInventory().clear();
-        player.getEnderChest().clear();
-        player.setExp(0);
-        player.setHealth(20);
-        player.setFoodLevel(20);
-
-        // Reset player's challenge progress
-        ChallengeManager.resetPlayerChallenges(player);
+        resetPlayerData(player);
 
         // Clear the island
         island.clearIslandBlocks();
@@ -412,6 +408,224 @@ public class IslandManager {
 
     public static ArrayList<Island> getIslands() {
         return islands;
+    }
+
+    public static void invitePlayerToIsland(Player player, String[] args) {
+        if (args.length < 1) {
+            player.sendMessage("Invalid syntax. Usage: /island invite <player>");
+            return;
+        }
+
+        String friendName = args[0];
+        Player invitedPlayer = Bukkit.getPlayer(friendName);
+
+        if (invitedPlayer == null) {
+            player.sendMessage("Player " + friendName + " is not online.");
+            return;
+        }
+
+        Island island = getIslandByOwnerUUID(player.getUniqueId().toString());
+        if (island == null) {
+            player.sendMessage("You do not have an island to invite players to.");
+            return;
+        }
+
+        if(player.getUniqueId().toString().equals(invitedPlayer.getUniqueId().toString())){
+            player.sendMessage("You cannot invite yourself to your own island.");
+            return;
+        }
+
+        if (island.isFriend(invitedPlayer.getUniqueId().toString())) {
+            player.sendMessage("Player " + friendName + " is already a party member.");
+            return;
+        }
+
+        sendInvitation(island, invitedPlayer);
+
+        return;
+    }
+
+    public static void sendInvitation(Island islandToJoin, Player invitedPlayer) {
+        invitedPlayer.sendMessage("You have been invited to join " + islandToJoin.getName() + ". Use /is accept to join or /is reject to ignore.");
+        invitedPlayer.sendMessage("This invitation will expire in 30 seconds.");
+        islandInvites.put(invitedPlayer.getUniqueId().toString(), islandToJoin);
+
+        // Create a task to remove the invitation after 30 seconds
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if(islandInvites.containsKey(invitedPlayer.getUniqueId().toString()) && islandInvites.get(invitedPlayer.getUniqueId().toString()).equals(islandToJoin))
+            {
+                invitedPlayer.sendMessage("The invitation to join " + islandToJoin.getName() + " has expired.");
+                islandInvites.remove(invitedPlayer.getUniqueId().toString());
+            }
+        }, 20 * 30);
+    }
+
+    public static void acceptIslandInvite(Player player) {
+        if (!islandInvites.containsKey(player.getUniqueId().toString())) {
+            player.sendMessage("You do not have any pending island invitations.");
+            return;
+        }
+
+        // If player has an island, remove them from it and delete it
+        Island currentIsland = getIslandByPlayerUUID(player.getUniqueId().toString());
+        if (currentIsland != null) {
+            // If player is the owner, delete the island
+            if (currentIsland.getOwnerUUID().equals(player.getUniqueId().toString())) {
+                islands.remove(currentIsland);
+                saveDataToFile();
+            } else {
+                // Remove player from friends list
+                currentIsland.removeFriend(player.getUniqueId().toString());
+                updateIsland(currentIsland);
+            }
+        }
+
+        // Add to new island
+        Island islandToJoin = islandInvites.get(player.getUniqueId().toString());
+        islandToJoin.addFriend(player.getUniqueId().toString());
+        updateIsland(islandToJoin);
+
+        // Reset player's state
+        resetPlayerData(player);
+
+        player.sendMessage("You have joined " + islandToJoin.getName() + ".");
+
+        Player owner = Bukkit.getPlayer(UUID.fromString(islandToJoin.getOwnerUUID()));
+        if (owner != null) {
+            owner.sendMessage(player.getName() + " has joined your island.");
+        }
+
+        islandInvites.remove(player.getUniqueId().toString());
+        player.teleport(islandToJoin.getIslandSpawn());
+    }
+
+    private static void resetPlayerData(Player player){
+         // Reset player's state
+         player.getInventory().clear();
+         player.getEnderChest().clear();
+         player.setExp(0);
+         player.setHealth(20);
+         player.setFoodLevel(20);
+ 
+         // Reset player's challenge progress
+         ChallengeManager.resetPlayerChallenges(player);
+    }
+
+    public static void rejectIslandInvite(Player player) {
+        if (!islandInvites.containsKey(player.getUniqueId().toString())) {
+            player.sendMessage("You do not have any pending island invitations.");
+            return;
+        }
+
+        Island islandToReject = islandInvites.get(player.getUniqueId().toString());
+        islandInvites.remove(player.getUniqueId().toString());
+
+        player.sendMessage("You have rejected the invitation to join " + islandToReject.getName() + ".");
+        Player owner = Bukkit.getPlayer(UUID.fromString(islandToReject.getOwnerUUID()));
+        if (owner != null) {
+            owner.sendMessage(player.getName() + " has rejected the invitation to join your island.");
+        }
+    }
+
+    public static void kickPlayerFromIsland(Player player, String[] args) {
+        if (args.length < 1) {
+            player.sendMessage("Invalid syntax. Usage: /island kick <player>");
+            return;
+        }
+
+        String friendName = args[0];
+        Player friend = Bukkit.getPlayer(friendName);
+
+        if (friend == null) {
+            player.sendMessage("Player " + friendName + " is not online.");
+            return;
+        }
+
+        Island island = getIslandByOwnerUUID(player.getUniqueId().toString());
+        if (island == null) {
+            player.sendMessage("You do not have an island to kick players from.");
+            return;
+        }
+
+        if (!island.isFriend(friend.getUniqueId().toString())) {
+            player.sendMessage("Player " + friendName + " is not an island party member.");
+            return;
+        }
+
+        island.removeFriend(friend.getUniqueId().toString());
+        updateIsland(island);
+
+        player.sendMessage("Player " + friendName + " has been kicked from the island.");
+        friend.sendMessage("You have been kicked from the island by " + player.getName() + ".");
+        friend.teleport(Bukkit.getWorld(Main.spawnWorldName).getSpawnLocation());
+    }
+
+    public static void leaveIsland(Player player) {
+        Island island = getIslandByPlayerUUID(player.getUniqueId().toString());
+        if (island == null) {
+            player.sendMessage("You do not have an island to leave.");
+            return;
+        }
+
+        if (island.getOwnerUUID().equals(player.getUniqueId().toString())) {
+            player.sendMessage("You cannot leave an island that you own. Use /is promote to transfer leadership. Or use /is restart to restart.");
+            return;
+        }
+
+        island.removeFriend(player.getUniqueId().toString());
+        updateIsland(island);
+
+        player.sendMessage("You have left " + island.getName() + ".");
+        player.teleport(Bukkit.getWorld(Main.spawnWorldName).getSpawnLocation());
+    }
+
+    public static void makeIslandLeader(Player sender, String[] args) {
+        if (args.length < 1) {
+            sender.sendMessage("Invalid syntax. Usage: /island promote <player>");
+            return;
+        }
+
+        String newLeaderName = args[0];
+        String newLeaderUUID = Bukkit.getOfflinePlayer(newLeaderName).getUniqueId().toString();
+
+        Island island = getIslandByOwnerUUID(sender.getUniqueId().toString());
+        if (island == null) {
+            sender.sendMessage("You do not have an island to promote players in.");
+            return;
+        }
+
+        if (!island.isFriend(newLeaderUUID)) {
+            sender.sendMessage("Player " + newLeaderName + " is not an island party member.");
+            return;
+        }
+
+        island.setOwnerUUID(newLeaderUUID);
+
+        // Add the old owner to the friends list
+        island.addFriend(sender.getUniqueId().toString());
+
+        updateIsland(island);
+
+        sender.sendMessage("You have promoted " + newLeaderName + " to island leader.");
+
+        Player newLeader = Bukkit.getPlayer(newLeaderUUID);
+        if(newLeader != null)
+            newLeader.sendMessage("You have been promoted to island leader by " + sender.getName() + ".");
+    }
+
+    public static void showIslandParty(Player player) {
+        Island island = getIslandByPlayerUUID(player.getUniqueId().toString());
+        if (island == null) {
+            player.sendMessage("You do not have an island to view party information for.");
+            return;
+        }
+
+        player.sendMessage("Island: " + island.getName());
+        player.sendMessage("Owner: " + Bukkit.getOfflinePlayer(UUID.fromString(island.getOwnerUUID())).getName());
+        player.sendMessage("Friends: ");
+        for (String friendUUID : island.getFriends()) {
+            player.sendMessage("* " + Bukkit.getOfflinePlayer(UUID.fromString(friendUUID)).getName());
+        }
     }
 
 }
@@ -790,17 +1004,7 @@ class Island {
         return ownerUUID;
     }
 
-    public void setOwnerUUID(Player sender, String newOwnerUUID){
-        if(!this.ownerUUID.equals(sender.getUniqueId().toString())){
-            sender.sendMessage("You must be the owner of the island to update its ownership.");
-            return;
-        }
-
-        if(!this.friends.contains(newOwnerUUID)){
-            sender.sendMessage("The new owner must be a member of the island party.");
-            return;
-        }
-
+    public void setOwnerUUID(String newOwnerUUID){
         this.ownerUUID = newOwnerUUID;
         IslandManager.updateIsland(this);
         return;

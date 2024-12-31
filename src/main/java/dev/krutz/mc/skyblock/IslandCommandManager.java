@@ -13,7 +13,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "accept", 
             "Accept an island invite", 
-            null)
+            (sender, args) -> { IslandManager.acceptIslandInvite((Player) sender);})
             .setPlayerOnly(true)
         );
 
@@ -58,7 +58,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "invite",
             "Invite a player to your island.",
-            null)//IslandManager.invitePlayerToIsland((Player) sender, args);})
+            (sender, args) -> {IslandManager.invitePlayerToIsland((Player) sender, args);})
             .setPlayerOnly(true)
             .setRequiredArgs(List.of("player"))
         );
@@ -66,15 +66,16 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "kick",
             "Kick a player from your island.",
-            null)//IslandManager.kickPlayerFromIsland((Player) sender, args);})
+            (sender, args) -> {IslandManager.kickPlayerFromIsland((Player) sender, args);})
             .setPlayerOnly(true)
             .setRequiredArgs(List.of("player"))
+            .setAliases(List.of("remove"))
         );
 
         islandCommands.addSubcommand(new CommandInfo(
             "leave",
             "Leave your party.",
-            null)//IslandManager.leaveIsland((Player) sender);})
+            (sender, args) -> {IslandManager.leaveIsland((Player) sender);})
             .setPlayerOnly(true)
         );
 
@@ -93,7 +94,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "makeleader",
             "Make a party member the party leader.",
-            null)
+            (sender, args) -> { IslandManager.makeIslandLeader((Player) sender, args);})
             .setPlayerOnly(true)
             .setAliases(List.of("promote"))
         );
@@ -108,7 +109,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "party",
             "Show party information",
-            null)
+            (sender, args) -> { IslandManager.showIslandParty((Player) sender);})
             .setPlayerOnly(true)
             .setAliases(List.of("p"))
         );
@@ -125,7 +126,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "reject",
             "Reject an island invite.",
-            null)
+            (sender, args) -> { IslandManager.rejectIslandInvite((Player) sender);})
             .setPlayerOnly(true)
         );
 
