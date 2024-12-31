@@ -8,6 +8,7 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -28,6 +29,7 @@ import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 
 // KNOWN ISSUES: 
@@ -46,9 +48,13 @@ public class IslandListener implements Listener {
     private final Map<Player, Island> lastIslandMap = new HashMap<>();
     private static final Map<UUID, Inventory> openMenus = new HashMap<>();
 
+    private static final int SAFE_SPAWN_RADIUS = 16; // Adjust as needed
+
     @EventHandler 
     public void onPlayerRespawn(PlayerRespawnEvent event){
         Player player = event.getPlayer();
+
+        Location respawnLoc = event.getRespawnLocation();
 
         // If player has an island, respawn at island spawn
         Island island = IslandManager.getIslandByPlayerUUID(player.getUniqueId().toString());
@@ -56,8 +62,56 @@ public class IslandListener implements Listener {
         if(island == null){
             return;
         }
-        event.setRespawnLocation(island.getIslandSpawn());
+
+        respawnLoc = island.getIslandSpawn();
+
+        // Check if location is safe
+        Location safeLocation = findSafeLocation(respawnLoc);
+
+        event.setRespawnLocation(safeLocation);
     }
+
+    @EventHandler
+    public void onPlayerTeleport(PlayerTeleportEvent event){
+        Location to = event.getTo();
+
+        // Check if location is safe
+        Location safeLocation = findSafeLocation(to);
+
+        event.setTo(safeLocation);
+    }
+
+    private Location findSafeLocation(Location location) {
+        World world = location.getWorld();
+        if (world == null) return location;
+    
+        // Check progressively larger Manhattan distances
+        for (int radius = 0; radius <= SAFE_SPAWN_RADIUS; radius++) {
+            for (int x = -radius; x <= radius; x++) {
+                for (int z = -radius; z <= radius; z++) {
+                    for (int y = -SAFE_SPAWN_RADIUS; y <= SAFE_SPAWN_RADIUS; y++) {
+                        // Only check blocks that are exactly at the current radius (Manhattan distance)
+                        if (Math.abs(x) + Math.abs(z) != radius) continue;
+    
+                        Location checkLocation = location.clone().add(x, y, z);
+    
+                        // Get blocks at the current location and below
+                        Material blockType = world.getBlockAt(checkLocation).getType();
+                        Material belowType = world.getBlockAt(checkLocation.clone().add(0, -1, 0)).getType();
+    
+                        // Check for passable block and solid ground below
+                        if (blockType.isAir() && belowType.isSolid() && belowType != Material.LAVA) {
+                            return checkLocation;
+                        }
+                    }
+                }
+            }
+        }
+    
+        // If no safe location is found, return the original
+        return location;
+    }
+    
 
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
