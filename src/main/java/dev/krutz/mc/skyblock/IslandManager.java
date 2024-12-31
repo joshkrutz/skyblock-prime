@@ -12,10 +12,13 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
+import org.bukkit.ChunkSnapshot;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.TreeType;
 import org.bukkit.World;
+import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
 import org.bukkit.block.BlockFace;
@@ -679,7 +682,123 @@ public class IslandManager {
             }
     
     }
-        
+
+    public static void setIslandBiome(Player player, String[] args) {
+        if(args.length < 1){
+            player.sendMessage("Invalid syntax. Usage: /island setbiome <biome>");
+            return;
+        }
+
+        Island island = getIslandByPlayerUUID(player.getUniqueId().toString());
+
+        if(island == null){
+            player.sendMessage("You do not have an island to set the biome for.");
+            return;
+        }
+
+
+        // List of supported biomes
+        Map<String, Biome> availableBiomes = Map.ofEntries(
+            Map.entry("PLAINS", Biome.PLAINS),
+            Map.entry("DESERT", Biome.DESERT),
+            Map.entry("FOREST", Biome.FOREST),
+            Map.entry("SWAMP", Biome.SWAMP),
+            Map.entry("TAIGA", Biome.TAIGA),
+            Map.entry("SNOWY_TAIGA", Biome.SNOWY_TAIGA),
+            Map.entry("SAVANNA", Biome.SAVANNA),
+            Map.entry("JUNGLE", Biome.JUNGLE),
+            Map.entry("BADLANDS", Biome.BADLANDS),
+            Map.entry("OCEAN", Biome.OCEAN),
+            Map.entry("RIVER", Biome.RIVER),
+            Map.entry("MUSHROOM_FIELDS", Biome.MUSHROOM_FIELDS),
+            Map.entry("DRIPSTONE_CAVES", Biome.DRIPSTONE_CAVES),
+            Map.entry("LUSH_CAVES", Biome.LUSH_CAVES),
+            Map.entry("DEEP_DARK", Biome.DEEP_DARK),
+            //Map.entry("PALE_GARDEN", Biome.PALE_GARDEN), // Not available in 1.21.3
+            Map.entry("MEADOW", Biome.MEADOW)
+        );
+
+        // Sort the biomes alphabetically
+        availableBiomes = availableBiomes.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey())
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+
+        String biomeName = args[0].toUpperCase();
+
+        if(!availableBiomes.containsKey(biomeName)){
+            player.sendMessage("Invalid biome. Available biomes: " + String.join(", ", availableBiomes.keySet()));
+            return;
+        }
+
+        Biome biome = availableBiomes.get(biomeName);
+
+        if (biome == null) {
+            player.sendMessage("Invalid biome. Available biomes: " + String.join(", ", availableBiomes.keySet()));
+            return;
+        }
+
+        Location islandCenter = island.getIslandCenter();
+        int radius = island.getRadius();
+        World world = island.getIslandSpawn().getWorld();
+
+        for (int x = -radius; x <= radius; x++) {
+            for (int z = -radius; z <= radius; z++) {
+                for (int y = world.getMinHeight(); y <= world.getMaxHeight(); y++) {
+                    Location blockLocation = islandCenter.clone().add(x, y, z);
+                    if (blockLocation.getBlock().getBiome() != biome) {
+                        blockLocation.getBlock().setBiome(biome);
+                    }
+                }
+            }
+        }
+
+        //sendBiomeUpdatePackets(player, island);
+
+        player.sendMessage("Your island biome has been set to " + biomeName.toLowerCase().replace("_", " ") + ".");
+    }
+
+    // private static void sendBiomeUpdatePackets(Player player, Island island){
+    //     ArrayList<Chunk> chunks = island.getChunks();
+
+    //     for (Chunk chunk : chunks) {
+    //         CraftChunk craftChunk = (CraftChunk) chunk;
+    //     }
+    // }
+
+    // public void sendBiomeUpdatePackets(World world, int x, int z) {
+    //     // Get the NMS world and chunk.
+    //     CraftWorld craftWorld = (CraftWorld) world;
+    //     WorldServer nmsWorld = craftWorld.getHandle();
+    //     Chunk nmsChunk = nmsWorld.getChunkAt(x, z);
+
+    //     // Create the packet for the updated chunk.
+    //     PacketPlayOutMapChunk chunkPacket = new PacketPlayOutMapChunk(nmsChunk, nmsChunk.getSections());
+
+    //     // Send the packet to all players in the world.
+    //     for (Player player : world.getPlayers()) {
+    //         if (isPlayerNearChunk(player, x, z)) {
+    //             ((org.bukkit.craftbukkit.v1_21_R1.entity.CraftPlayer) player).getHandle().b.a(chunkPacket);
+    //         }
+    //     }
+    // }
+
+    /**
+     * Determines if a player is near a specific chunk.
+     *
+     * @param player The player to check.
+     * @param chunkX The chunk's X coordinate.
+     * @param chunkZ The chunk's Z coordinate.
+     * @return True if the player is near the chunk, false otherwise.
+     */
+    private boolean isPlayerNearChunk(Player player, int chunkX, int chunkZ) {
+        ChunkSnapshot chunkSnapshot = player.getLocation().getChunk().getChunkSnapshot();
+        int playerChunkX = chunkSnapshot.getX();
+        int playerChunkZ = chunkSnapshot.getZ();
+
+        // Check if the player's chunk is within a certain radius (e.g., 1 chunk away).
+        int radius = 1;
+        return Math.abs(playerChunkX - chunkX) <= radius && Math.abs(playerChunkZ - chunkZ) <= radius;
+    }
 }
         
 class Island {
@@ -758,6 +877,25 @@ class Island {
 
     public int ChunkToBlock(int chunk) {
         return chunk * 16;
+    }
+
+    public ArrayList<Chunk> getChunks(){
+        ArrayList<Chunk> chunks = new ArrayList<>();
+
+        // Get the center of the island
+        Location center = getIslandCenter();
+
+        // Calculate the chunk-aligned starting X and Z
+        int startX = (center.getBlockX() - BLOCKS_PER_CHUNK / 2) - ChunkToBlock(CHUNK_ISLAND_RADIUS);
+        int startZ = (center.getBlockZ() - BLOCKS_PER_CHUNK / 2) - ChunkToBlock(CHUNK_ISLAND_RADIUS);
+
+        for (int x = startX; x < startX + ((int) (CHUNK_ISLAND_RADIUS * BLOCKS_PER_CHUNK)) * 2; x += BLOCKS_PER_CHUNK) {
+            for (int z = startZ; z < startZ + ((int) (CHUNK_ISLAND_RADIUS * BLOCKS_PER_CHUNK)) * 2; z += BLOCKS_PER_CHUNK) {
+                chunks.add(SKYBLOCK_WORLD.getChunkAt(x / BLOCKS_PER_CHUNK, z / BLOCKS_PER_CHUNK));
+            }
+        }
+
+        return chunks;
     }
             
     public void calculateScore() {

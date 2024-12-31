@@ -144,8 +144,9 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "setbiome",
             "Set your island biome.",
-            null)
+            (sender, args) -> { IslandManager.setIslandBiome((Player) sender, args);})
             .setPlayerOnly(true)
+            .setRequiredArgs(List.of("biome"))
         );
 
         islandCommands.addSubcommand(new CommandInfo(
