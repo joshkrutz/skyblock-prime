@@ -2,13 +2,19 @@ package dev.krutz.mc.skyblock;
 
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.material.Crops;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -52,6 +58,43 @@ public class IslandListener implements Listener {
                 player.sendMessage(currentIsland.getGreetingMessage());
             }
             lastIslandMap.put(player, currentIsland);
+        }
+    }
+
+    // Do not allow players to place blocks outside their island
+    @EventHandler
+    public void onPlayerPlaceBlock(BlockPlaceEvent event) {
+        Player player = event.getPlayer();
+        Location blockLocation = event.getBlock().getLocation();
+        Island playersIsland = IslandManager.getIslandByPlayerUUID(player.getUniqueId().toString());
+        if (!isLocationInIsland(blockLocation, playersIsland) && !player.isOp()) {
+            player.sendMessage(Component.text("You can't place blocks outside your island!").color(NamedTextColor.RED));
+            event.setCancelled(true);
+        }
+    }
+
+    // Do not allow players to break blocks outside their island
+    @EventHandler
+    public void onPlayerBreakBlock(BlockBreakEvent event) {
+        Player player = event.getPlayer();
+        Location blockLocation = event.getBlock().getLocation();
+        Island playersIsland = IslandManager.getIslandByPlayerUUID(player.getUniqueId().toString());
+        if (!isLocationInIsland(blockLocation, playersIsland) && !player.isOp()) {
+            player.sendMessage(Component.text("You can't break blocks outside your island!").color(NamedTextColor.RED));
+            event.setCancelled(true);
+        }
+    }
+
+    // Do not allow player interactions outside their island
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+        Location blockLocation = event.getClickedBlock().getLocation();
+        Island playersIsland = IslandManager.getIslandByPlayerUUID(player.getUniqueId().toString());
+        if (!isLocationInIsland(blockLocation, playersIsland) && !player.isOp()) {
+            event.setCancelled(true);
+            if(event.getHand() == EquipmentSlot.HAND) return;
+            player.sendMessage(Component.text("This action is blocked because you are outside of your island!").color(NamedTextColor.RED));
         }
     }
 
@@ -141,13 +184,19 @@ public class IslandListener implements Listener {
         if (playersIsland == null) return false;
 
         Location playerLocation = player.getLocation();
-        Location islandCenter = playersIsland.getIslandCenter();
-        islandCenter.setY(playerLocation.getY());
+        return isLocationInIsland(playerLocation, playersIsland);
+    }
 
-        if (!playerLocation.getWorld().getName().equals(islandCenter.getWorld().getName())) return false;
+    public static boolean isLocationInIsland(Location location, Island island) {
+        if (island == null) return false;
 
-        double radiusSquared = playersIsland.getRadius() * playersIsland.getRadius();
-        return islandCenter.distanceSquared(playerLocation) < radiusSquared;
+        Location islandCenter = island.getIslandCenter();
+        islandCenter.setY(location.getY());
+
+        if (!location.getWorld().getName().equals(islandCenter.getWorld().getName())) return false;
+
+        double radiusSquared = island.getRadius() * island.getRadius();
+        return islandCenter.distanceSquared(location) < radiusSquared;
     }
 
     //TODO if not on friends or the owner, prevent damaging, set to adventure mode
