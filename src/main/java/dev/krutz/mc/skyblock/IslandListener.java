@@ -7,6 +7,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -45,6 +46,18 @@ public class IslandListener implements Listener {
     private final Map<Player, Island> lastIslandMap = new HashMap<>();
     private static final Map<UUID, Inventory> openMenus = new HashMap<>();
 
+    @EventHandler 
+    public void onPlayerRespawn(PlayerRespawnEvent event){
+        Player player = event.getPlayer();
+
+        // If player has an island, respawn at island spawn
+        Island island = IslandManager.getIslandByPlayerUUID(player.getUniqueId().toString());
+        
+        if(island == null){
+            return;
+        }
+        event.setRespawnLocation(island.getIslandSpawn());
+    }
 
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
