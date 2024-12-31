@@ -33,7 +33,9 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "ban",
              "Ban a player from your island", 
-             null));
+             null)
+            .setPlayerOnly(true)
+        );
 
         islandCommands.addSubcommand(new CommandInfo(
             "create",
@@ -52,7 +54,8 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "info",
             "Check your or another player's island info.",
-            null)
+            (sender, args) -> { IslandManager.showIslandInfo(sender, args);})
+            .setRequiredArgs(List.of("player"))
         );
 
         islandCommands.addSubcommand(new CommandInfo(

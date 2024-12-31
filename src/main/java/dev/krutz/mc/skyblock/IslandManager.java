@@ -5,9 +5,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -18,6 +20,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Directional;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -628,30 +631,58 @@ public class IslandManager {
         }
     }
 
-}
+    public static void showIslandInfo(CommandSender sender, String[] args) {
+        if (args.length < 1 && !(sender instanceof Player)) {
+            sender.sendMessage("Invalid syntax. Usage: /island info <player>");
+            return;
+        }
 
-class Island {
-    private final int x;
-    private final int z;
-    private String name;
-    private final int index;
-    private String ownerUUID;
-    private List<String> friends;
-    private String enterMessage;
-    private String exitMessage;
-    private Location islandSpawn;
-    public boolean changed = false;
+        if (args.length < 1 && sender instanceof Player player) {
+            showIslandInfoHelper(sender, player.getUniqueId().toString());
+            return;
+        }
 
-    private static int lastIslandIndex = 0;
+        String playerName = args[0];
+        String playerUUID = Bukkit.getOfflinePlayer(playerName).getUniqueId().toString();
 
-    public int ChunkToBlock(int chunk) {
-        return chunk * 16;
+        showIslandInfoHelper(sender, playerUUID);
     }
+
+    private static void showIslandInfoHelper(CommandSender sender, String playerUUID){
+        Island island = getIslandByPlayerUUID(playerUUID);
+        if (island == null) {
+            sender.sendMessage(Bukkit.getOfflinePlayer(UUID.fromString(playerUUID)).getName() + " does not have an island.");
+            return;
+        }
+
+        // Calculate score
+        double score = 0;
+        island.calculateScore();
+            score = island.getScore();
+            Map<String, Double> scoreBreakdown = island.getScoreBreakdown();
+
+            //sort from highest to lowest
+            scoreBreakdown = scoreBreakdown.entrySet().stream()
+                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
     
-    public int ChunkToBlock(float chunk) {
-        return (int) chunk * 16;
+            sender.sendMessage("Island: " + island.getName());
+            sender.sendMessage("Score: " + score);
+            
+            // Display top 10 blocks
+            int i = 0;
+            for (Map.Entry<String, Double> entry : scoreBreakdown.entrySet()) {
+                if(i >= 10)
+                    break;
+                sender.sendMessage("* " + entry.getKey() + ": " + entry.getValue());
+                i++;
+            }
+    
     }
-
+        
+}
+        
+class Island {
     // TODO Make this pull from a config file
     public static final float CHUNK_ISLAND_RADIUS = 3.5f;
     public static final int CHUNK_BUFFER = 1; // Buffer space between islands
@@ -681,6 +712,22 @@ class Island {
     public static final int MINIMUM_Y = -64;
     public static final int MAXIMUM_Y = 320;
 
+    // Island data
+    private final int x;
+    private final int z;
+    private String name;
+    private final int index;
+    private String ownerUUID;
+    private List<String> friends;
+    private String enterMessage;
+    private String exitMessage;
+    private Location islandSpawn;
+    public boolean changed = false;
+    private double score = 0;
+    private Map<String, Double> scoreBreakdown = new HashMap<>();
+
+    private static int lastIslandIndex = 0;
+
     // Islands instantiated with this constructor are assumed to be loaded from file
     public Island(int x, int z, String name, int index, String ownerUUID, List<String> friends, String enterMessage, String exitMessage, Location islandSpawn){
         this.x = x;
@@ -707,6 +754,52 @@ class Island {
         ownerUUID = player.getUniqueId().toString();
         friends = new ArrayList<>();
         islandSpawn = new Location(player.getWorld(), x + 2, Y_HEIGHT, z);
+    }
+
+    public int ChunkToBlock(int chunk) {
+        return chunk * 16;
+    }
+            
+    public void calculateScore() {
+
+        score = 0;
+        scoreBreakdown = new HashMap<>();
+
+        // Get the center of the island
+        Location center = getIslandCenter();
+
+        // Calculate the chunk-aligned starting X and Z
+        int startX = (center.getBlockX() - BLOCKS_PER_CHUNK / 2) - ChunkToBlock((int) CHUNK_ISLAND_RADIUS);
+        int startZ = (center.getBlockZ() - BLOCKS_PER_CHUNK / 2) - ChunkToBlock((int) CHUNK_ISLAND_RADIUS);
+
+        // Calculate score
+        // Loop through the chunk area (7x7 chunks = ISLAND_RADIUS*2)
+        for (int x = startX; x < startX + ((int) (CHUNK_ISLAND_RADIUS * BLOCKS_PER_CHUNK)) * 2; x++) {
+            for (int z = startZ; z < startZ + ((int) (CHUNK_ISLAND_RADIUS * BLOCKS_PER_CHUNK)) * 2; z++) {
+                for (int y = MINIMUM_Y; y < MAXIMUM_Y; y++) {
+                    Material blockType = SKYBLOCK_WORLD.getBlockAt(x, y, z).getType();
+                    if( blockType != Material.AIR){
+                        score += 0.01;
+                        if(scoreBreakdown.containsKey(blockType.toString()))
+                            scoreBreakdown.put(blockType.toString(), scoreBreakdown.get(blockType.toString()) + 0.01);
+                        else
+                            scoreBreakdown.put(blockType.toString(), 0.01);
+                    }
+                }
+            }
+        }
+    }
+
+    public double getScore() {
+        return score;
+    }
+
+    public Map<String, Double> getScoreBreakdown() {
+        return scoreBreakdown;
+    }
+
+    public int ChunkToBlock(float chunk) {
+        return (int) chunk * 16;
     }
 
     public void clearIslandBlocks() {
