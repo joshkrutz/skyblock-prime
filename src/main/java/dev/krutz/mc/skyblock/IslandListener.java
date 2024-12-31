@@ -2,6 +2,7 @@ package dev.krutz.mc.skyblock;
 
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -28,6 +29,7 @@ import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
 
 
 public class IslandListener implements Listener {
@@ -59,41 +61,123 @@ public class IslandListener implements Listener {
         }
     }
 
-    // Do not allow players to place blocks outside their island
-    @EventHandler
-    public void onPlayerPlaceBlock(BlockPlaceEvent event) {
-        Player player = event.getPlayer();
-        Location blockLocation = event.getBlock().getLocation();
-        Island playersIsland = IslandManager.getIslandByPlayerUUID(player.getUniqueId().toString());
-        if (!isLocationInIsland(blockLocation, playersIsland) && !player.isOp()) {
-            player.sendMessage(Component.text("You can't place blocks outside your island!").color(NamedTextColor.RED));
-            event.setCancelled(true);
-        }
-    }
-
-    // Do not allow players to break blocks outside their island
-    @EventHandler
-    public void onPlayerBreakBlock(BlockBreakEvent event) {
-        Player player = event.getPlayer();
-        Location blockLocation = event.getBlock().getLocation();
-        Island playersIsland = IslandManager.getIslandByPlayerUUID(player.getUniqueId().toString());
-        if (!isLocationInIsland(blockLocation, playersIsland) && !player.isOp()) {
-            player.sendMessage(Component.text("You can't break blocks outside your island!").color(NamedTextColor.RED));
-            event.setCancelled(true);
-        }
-    }
-
-    // Do not allow player interactions outside their island
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        Location blockLocation = event.getClickedBlock().getLocation();
-        Island playersIsland = IslandManager.getIslandByPlayerUUID(player.getUniqueId().toString());
-        if (!isLocationInIsland(blockLocation, playersIsland) && !player.isOp()) {
-            event.setCancelled(true);
-            if(event.getHand() == EquipmentSlot.HAND) return;
-            player.sendMessage(Component.text("This action is blocked because you are outside of your island!").color(NamedTextColor.RED));
+        Action action = event.getAction();
+        Block block = event.getClickedBlock();
+
+        // Need to update to block non-block interactions (e.g. snowballs, ender pearls, eggs)
+        if (block == null) return;
+
+        Location blockLocation = block.getLocation();
+        Material blockType = block.getType();
+
+        // Check if the block is within their island boundaries
+        boolean isWithinIsland = isLocationInIsland(blockLocation, IslandManager.getIslandByPlayerUUID(player.getUniqueId().toString()));
+
+        // Handle block breaking (left-clicking)
+        if (action == Action.LEFT_CLICK_BLOCK) {
+            if (!isWithinIsland) {
+                event.setCancelled(true);
+                player.sendMessage(Component.text("You can't break blocks outside your island!").color(NamedTextColor.RED));
+            }
+            return;
         }
+
+        // Handle interacting with blocks (right-clicking interactable blocks)
+        if (action == Action.RIGHT_CLICK_BLOCK && !player.isSneaking()) {
+            if (!isWithinIsland) {
+                switch (blockType) {
+                    case ENDER_CHEST:
+                    case BARREL:
+                    case SHULKER_BOX:
+                    case CHEST:
+                        player.sendMessage(Component.text("You can't open containers outside your island!").color(NamedTextColor.RED));
+                        event.setCancelled(true);
+                        return;
+                    case ANVIL:
+                    case CRAFTING_TABLE:
+                    case BREWING_STAND:
+                    case FLETCHING_TABLE:
+                    case ENCHANTING_TABLE:
+                    case GRINDSTONE:
+                    case SMITHING_TABLE:
+                    case CARTOGRAPHY_TABLE:
+                    case LOOM:
+                    case STONECUTTER:
+                        player.sendMessage(Component.text("You can't use workstations outside your island!").color(NamedTextColor.RED));
+                        event.setCancelled(true);
+                        event.setCancelled(true);
+                        return;
+                    case SMOKER:
+                    case BLAST_FURNACE:
+                    case FURNACE:
+                        player.sendMessage(Component.text("You can't use furnaces outside your island!").color(NamedTextColor.RED));
+                        event.setCancelled(true);
+                        return;
+                    case LEVER:
+                        player.sendMessage(Component.text("You can't use levers outside your island!").color(NamedTextColor.RED));
+                        event.setCancelled(true);
+                        return;
+                    default:
+                        if (blockType.name().contains("DOOR") || blockType.name().contains("GATE")) {
+                            player.sendMessage(Component.text("You can't interact with doors or gates outside your island!").color(NamedTextColor.RED));
+                            event.setCancelled(true);
+                            return;
+                        }
+                        else if (blockType.name().contains("BUTTON") || blockType.name().contains("PRESSURE_PLATE")) {
+                            player.sendMessage(Component.text("You can't interact with buttons or pressure plates outside your island!").color(NamedTextColor.RED));
+                            event.setCancelled(true);
+                            return;
+                        }
+                        else if (blockType.name().contains("SIGN")) {
+                            player.sendMessage(Component.text("You can't interact with signs outside your island!").color(NamedTextColor.RED));
+                            event.setCancelled(true);
+                            return;
+                        }
+                        else if (blockType.name().contains("BED")) {
+                            player.sendMessage(Component.text("You can't interact with beds outside your island!").color(NamedTextColor.RED));
+                            event.setCancelled(true);
+                            return;
+                        } 
+                }
+            }
+        }
+
+        // Get hand that the player is using
+        EquipmentSlot hand = event.getHand();
+
+        // Get the item in the player's hand
+        ItemStack itemInHand = hand == EquipmentSlot.HAND ? player.getInventory().getItemInMainHand() : player.getInventory().getItemInOffHand();
+
+        boolean playerHasItemInHand = itemInHand != null && itemInHand.getType() != Material.AIR;
+
+        if (itemInHand == null || itemInHand.getType() == Material.AIR) return;
+
+        boolean playerIsHoldingBlock = playerHasItemInHand && itemInHand.getType().isBlock();
+
+        if (action == Action.RIGHT_CLICK_BLOCK) {
+            if (!isWithinIsland && playerIsHoldingBlock) {
+                event.setCancelled(true);
+                player.sendMessage(Component.text("You can't place blocks outside your island!").color(NamedTextColor.RED));
+            }
+            else if(!isWithinIsland && playerHasItemInHand){
+                boolean isItemFood = itemInHand.getType().isEdible();
+                if(isItemFood)
+                    return;
+                
+                boolean isItemArmor = itemInHand.getType().name().contains("HELMET") || itemInHand.getType().name().contains("CHESTPLATE") || itemInHand.getType().name().contains("TUNIC") || itemInHand.getType().name().contains("PANTS") || itemInHand.getType().name().contains("CAP") || itemInHand.getType().name().contains("LEGGINGS") || itemInHand.getType().name().contains("BOOTS");
+                if(isItemArmor)
+                    return;
+
+                event.setCancelled(true);
+                player.sendMessage(Component.text("You can't use this outside your island!").color(NamedTextColor.RED));
+            }
+            return;
+        }
+
+
     }
 
     private Island getIslandAtLocation(ArrayList<Island> islands, Location from) {

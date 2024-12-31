@@ -12,10 +12,7 @@ commands:
   island:
     aliases: [is]
     description: Teleport to your Skyblock island
-    usage: |
-      /island create
-      /island home
-      /island restart
+    usage: /island help
   spawn:
     description: Teleport to the spawn
     usage: /spawn
