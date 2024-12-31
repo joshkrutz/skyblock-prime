@@ -16,6 +16,8 @@ import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Directional;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -216,17 +218,17 @@ public class IslandManager {
 
     public static void restartIsland(Player player){
         Island island = getIslandByPlayerUUID(player.getUniqueId().toString());
-        boolean playerOwnsIsland = island.getOwnerUUID().equals(player.getUniqueId().toString());
-        boolean playerBelongsToIsland = island != null && !playerOwnsIsland;
 
         // Check if the player has an island
-        if(!playerBelongsToIsland){
+        if(island == null){
             player.sendMessage("You do not have an island to restart.");
             return;
         }
 
+        boolean playerOwnsIsland = island.getOwnerUUID().equals(player.getUniqueId().toString());
+
         // Check if the player owns the island
-        if (playerBelongsToIsland && !playerOwnsIsland) {
+        if (!playerOwnsIsland) {
             player.sendMessage("You cannot restart an island that you do not own. Use /island leave to leave this island and /island create to make a new one.");
             return;
         }
@@ -253,8 +255,12 @@ public class IslandManager {
         island.resetIslandData();
         island.buildIsland();
 
+        island.setIslandSpawn();
+
         // Notify the player
         player.sendMessage("Your island has been reset. Use /island home to teleport to your new island.");
+
+        player.teleport(island.getIslandSpawn());
     }
 
     public static void setIslandSpawn(Player player){
@@ -504,6 +510,21 @@ class Island {
                 for (int y = MINIMUM_Y; y < MAXIMUM_Y; y++) {
                     // Clear block at each coordinate within the island boundaries
                     setBlock(SKYBLOCK_WORLD, x, y, z, Material.AIR);
+                }
+            }
+        }
+
+        // Clear any entities within the island boundaries
+        for (Entity entity : SKYBLOCK_WORLD.getEntities()) {
+            if (entity.getLocation().distance(center) <= CHUNK_ISLAND_RADIUS * BLOCKS_PER_CHUNK) {
+                // Remove all entities that are not players
+                if (!(entity instanceof Player)) {
+                    entity.remove();
+                }
+                else{
+                    Player player = (Player) entity;
+                    player.teleport(player.getWorld().getSpawnLocation());
+                    player.sendMessage("This island has been reset. You have been teleported to your spawn point.");
                 }
             }
         }

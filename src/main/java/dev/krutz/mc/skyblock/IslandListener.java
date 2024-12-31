@@ -35,7 +35,10 @@ import org.bukkit.block.Block;
 // - Animals/entites can be killed, bred, sheared, ridden, (take armor and saddles) leashed outside their island
 // - Player can interact with donkeys/mules (and access chests) outside their island
 // - Player can interact with minecarts with hoppers and chests outside their island
-// - Player can pick up items and 
+// - Player can pick up items and throw items on other islands
+// - Player can fire projectiles from their island at nearby islands
+// - Player can use pistons to exceed island radius
+// 
 
 public class IslandListener implements Listener {
 
