@@ -126,7 +126,7 @@ public class IslandListener implements Listener {
 
         if (to == null) return;
 
-        if(!to.getWorld().getName().equals(Main.skyblockOverworldName)) return;
+        if(!to.getWorld().getName().equals(Main.skyblockWorldName)) return;
             
         Island currentIsland = getIslandAtLocation(islandManager.getAllIslands(), to);
         Island lastIsland = lastIslandMap.get(player);

@@ -294,7 +294,7 @@ public class IslandManager {
         }
 
         // If they are in the skyblock world, move player to spawn
-        if( player.getLocation().getWorld().getName().equals(Main.skyblockOverworldName))
+        if( player.getLocation().getWorld().getName().equals(Main.skyblockWorldName))
             player.teleport(Bukkit.getWorld(Main.spawnWorldName).getSpawnLocation());
         
 

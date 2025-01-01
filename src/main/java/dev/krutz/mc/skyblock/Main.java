@@ -16,8 +16,8 @@ import org.bukkit.command.Command;
 
 public class Main extends JavaPlugin {
 
-    static final String spawnWorldName = "world";
-    static final String skyblockOverworldName = "skyblock_world";
+    public static final String spawnWorldName = "world";
+    public static final String skyblockWorldName = "skyblock_world";
     private final CommandManager commandManager = new CommandManager();
     private IslandManager islandManager;
 
@@ -27,8 +27,8 @@ public class Main extends JavaPlugin {
         ensureChallengesFileExists();
 
          // Create the skyblock world if it doesn't exist
-         if (getServer().getWorld(skyblockOverworldName) == null) {
-            WorldCreator worldCreator = new WorldCreator(skyblockOverworldName);
+         if (getServer().getWorld(skyblockWorldName) == null) {
+            WorldCreator worldCreator = new WorldCreator(skyblockWorldName);
             worldCreator.environment(World.Environment.NORMAL);
             worldCreator.type(WorldType.NORMAL);
             worldCreator.generator(new SkyblockWorldGenerator());

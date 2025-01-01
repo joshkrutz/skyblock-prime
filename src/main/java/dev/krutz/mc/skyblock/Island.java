@@ -34,18 +34,6 @@ public class Island {
     public static final int CHUNK_BUFFER = 1; // Buffer space between islands
     private static final int MAX_ISLANDS_PER_ROW = 10;
     private static final int Y_HEIGHT = 100; // Offset for island schematic
-    private final  ItemStack[] STARTER_CHEST_CONTENTS = {
-        new ItemStack(Material.PUMPKIN_SEEDS),
-        new ItemStack(Material.LAVA_BUCKET),
-        new ItemStack(Material.CACTUS),
-        new ItemStack(Material.MELON_SEEDS),
-        new ItemStack(Material.ICE),
-        new ItemStack(Material.BEETROOT_SEEDS),
-        new ItemStack(Material.SWEET_BERRIES),
-        new ItemStack(Material.RED_MUSHROOM),
-        new ItemStack(Material.SUGAR_CANE),
-        new ItemStack(Material.BROWN_MUSHROOM)
-    };
     private static final double SPAWN_OFFSET_X = 2.5;
     private static final double SPAWN_OFFSET_Y = 5;
     private static final double SPAWN_OFFSET_Z = 0.5;
@@ -55,14 +43,13 @@ public class Island {
     private static final double DEFAULT_BLOCK_WEIGHT = 0.01;
 
     // Constants that are not configurable
-    private final World SKYBLOCK_WORLD = Bukkit.getWorld(Main.skyblockOverworldName);
     private final int BLOCKS_PER_CHUNK = 16;
-    private final int MINIMUM_Y = SKYBLOCK_WORLD.getMinHeight();
-    private final int MAXIMUM_Y = SKYBLOCK_WORLD.getMaxHeight();
+    private final int MINIMUM_Y = -64;
+    private final int MAXIMUM_Y = 320;
 
     // Static variable to keep track of the last island index
     private static int lastIslandIndex = 0;
-
+    
     // Island data that is serialized and deserialized
     @Expose @SerializedName("x") private final int x;
     @Expose @SerializedName("z") private final int z;
@@ -149,6 +136,8 @@ public class Island {
         int startX = (center.getBlockX() - BLOCKS_PER_CHUNK / 2) - ChunkToBlock((int) CHUNK_ISLAND_RADIUS);
         int startZ = (center.getBlockZ() - BLOCKS_PER_CHUNK / 2) - ChunkToBlock((int) CHUNK_ISLAND_RADIUS);
 
+        World SKYBLOCK_WORLD = center.getWorld();
+
         // Calculate score
         for (int x = startX; x < startX + ((int) (CHUNK_ISLAND_RADIUS * BLOCKS_PER_CHUNK)) * 2; x++) {
             for (int z = startZ; z < startZ + ((int) (CHUNK_ISLAND_RADIUS * BLOCKS_PER_CHUNK)) * 2; z++) {
@@ -192,6 +181,8 @@ public class Island {
         int startX = (center.getBlockX() - BLOCKS_PER_CHUNK / 2) - ChunkToBlock((int) CHUNK_ISLAND_RADIUS);
         int startZ = (center.getBlockZ() - BLOCKS_PER_CHUNK / 2) - ChunkToBlock((int) CHUNK_ISLAND_RADIUS);
 
+        World SKYBLOCK_WORLD = center.getWorld();
+
         // Loop through the chunk area (7x7 chunks = ISLAND_RADIUS*2)
         for (int x = startX; x < startX + ((int) (CHUNK_ISLAND_RADIUS * BLOCKS_PER_CHUNK)) * 2; x++) {
             for (int z = startZ; z < startZ + ((int) (CHUNK_ISLAND_RADIUS * BLOCKS_PER_CHUNK)) * 2; z++) {
@@ -224,6 +215,8 @@ public class Island {
      * Build the island, including the bedrock base, dirt/sand, grass, tree, and starter chest.
      */
     public void buildIsland(){
+        World SKYBLOCK_WORLD = islandSpawn.getWorld();
+
         // Bedrock base
         setBlock(SKYBLOCK_WORLD, x, Y_HEIGHT, z, Material.BEDROCK);
 
@@ -351,10 +344,11 @@ public class Island {
     }
 
     /**
-     * Fill the island's chest with starter items. These START_CHEST_CONTENTS are configurable in the config file.
+     * Fill the island's chest with starter items.
      * @param chestLocation
      */
     private void populateStarterChest(Location chestLocation) {
+        World SKYBLOCK_WORLD = chestLocation.getWorld();
         // Populate the chest with starter items
         Block chestBlock = SKYBLOCK_WORLD.getBlockAt(chestLocation);
         // Set the chest's facing direction
@@ -369,7 +363,20 @@ public class Island {
             Inventory chestInventory = chest.getInventory();
 
             // Add starter items to the chest
-            ItemStack[] items = new ItemStack[27]; // A chest inventory has 27 slots
+            ItemStack[] items = new ItemStack[27];
+            
+            ItemStack[] STARTER_CHEST_CONTENTS = { 
+                new ItemStack(Material.PUMPKIN_SEEDS),
+                new ItemStack(Material.LAVA_BUCKET),
+                new ItemStack(Material.CACTUS),
+                new ItemStack(Material.MELON_SEEDS),
+                new ItemStack(Material.ICE),
+                new ItemStack(Material.BEETROOT_SEEDS),
+                new ItemStack(Material.SWEET_BERRIES),
+                new ItemStack(Material.RED_MUSHROOM),
+                new ItemStack(Material.SUGAR_CANE),
+                new ItemStack(Material.BROWN_MUSHROOM)
+            };
 
             // Randomly place the items into the chest
             for (int i = 0; i < STARTER_CHEST_CONTENTS.length; i++) {
@@ -393,7 +400,7 @@ public class Island {
      * @param z
      * @param material
      */
-    private static void setBlock(World world, int x, int y, int z, Material material) {
+    private void setBlock(World world, int x, int y, int z, Material material) {
         Location location = new Location(world, x, y, z);
         Block block = world.getBlockAt(location);
         block.setType(material);
@@ -448,6 +455,8 @@ public class Island {
 
         // Get the center of the island
         Location center = getIslandCenter();
+        
+        World SKYBLOCK_WORLD = center.getWorld();
 
         // Calculate the chunk-aligned starting X and Z
         int startX = (center.getBlockX() - BLOCKS_PER_CHUNK / 2) - ChunkToBlock(CHUNK_ISLAND_RADIUS);
@@ -496,6 +505,7 @@ public class Island {
      * Set the island spawn point to the default location. Default spawn offsets are configurable in the config file and are offset from the island center (Bedrock block).
      */
     private void setIslandSpawn(){
+        World SKYBLOCK_WORLD = Bukkit.getWorld(Main.skyblockWorldName);
         // Set the island spawn point
         Location spawnLocation = new Location(SKYBLOCK_WORLD, x + SPAWN_OFFSET_X, Y_HEIGHT + SPAWN_OFFSET_Y, z + SPAWN_OFFSET_Z);
         spawnLocation.setYaw(SPAWN_OFFSET_YAW);
