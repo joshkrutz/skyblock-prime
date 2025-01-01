@@ -6,14 +6,14 @@ import java.util.List;
 
 public class IslandCommandManager {
 
-    public void registerCommands(CommandManager commandManager) {
+    public void registerCommands(CommandManager commandManager, IslandManager islandManager) {
         SubcommandGroup islandCommands = new SubcommandGroup("island", "Manage your island.");
         islandCommands.setAliases(List.of("is"));
 
         islandCommands.addSubcommand(new CommandInfo(
             "accept", 
             "Accept an island invite", 
-            (sender, args) -> { IslandManager.acceptIslandInvite((Player) sender);})
+            (sender, args) -> { islandManager.acceptIslandInvite((Player) sender);})
             .setPlayerOnly(true)
         );
 
@@ -22,10 +22,10 @@ public class IslandCommandManager {
             "Teleports you to your island (or create one)",
             (sender, args) -> {
                 Player player = (Player) sender;
-                if(IslandManager.getIslandByPlayerUUID(player.getUniqueId().toString()) == null) 
-                    IslandManager.createIsland(player);
+                if(islandManager.getIslandByPlayerUUID(player.getUniqueId()) == null) 
+                    islandManager.createIsland(player);
                 else
-                    IslandManager.teleportToIsland(player);
+                    islandManager.teleportToIsland(player);
             })
             .setPlayerOnly(true)
         );
@@ -40,21 +40,21 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "create",
             "Create a new island.",
-            (sender, args) -> { IslandManager.createIsland((Player) sender);})
+            (sender, args) -> { islandManager.createIsland((Player) sender);})
             .setPlayerOnly(true)
         );
 
         islandCommands.addSubcommand(new CommandInfo(
             "home",
             "Teleport to your island home.",
-            (sender, args) -> { IslandManager.teleportToIsland((Player) sender);})
+            (sender, args) -> { islandManager.teleportToIsland((Player) sender);})
             .setPlayerOnly(true)
         );
 
         islandCommands.addSubcommand(new CommandInfo(
             "info",
             "Check your or another player's island info.",
-            (sender, args) -> { IslandManager.showIslandInfo(sender, args);})
+            (sender, args) -> { islandManager.showIslandInfo(sender, args);})
             .setRequiredArgs(List.of("player"))
             .setAliases(List.of("level"))
         );
@@ -62,7 +62,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "invite",
             "Invite a player to your island.",
-            (sender, args) -> {IslandManager.invitePlayerToIsland((Player) sender, args);})
+            (sender, args) -> {islandManager.invitePlayerToIsland((Player) sender, args);})
             .setPlayerOnly(true)
             .setRequiredArgs(List.of("player"))
         );
@@ -70,7 +70,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "kick",
             "Kick a player from your island.",
-            (sender, args) -> {IslandManager.kickPlayerFromIsland((Player) sender, args);})
+            (sender, args) -> {islandManager.kickPlayerFromIsland((Player) sender, args);})
             .setPlayerOnly(true)
             .setRequiredArgs(List.of("player"))
             .setAliases(List.of("remove"))
@@ -79,7 +79,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "leave",
             "Leave your party.",
-            (sender, args) -> {IslandManager.leaveIsland((Player) sender);})
+            (sender, args) -> {islandManager.leaveIsland((Player) sender);})
             .setPlayerOnly(true)
         );
 
@@ -93,7 +93,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "makeleader",
             "Make a party member the party leader.",
-            (sender, args) -> { IslandManager.makeIslandLeader((Player) sender, args);})
+            (sender, args) -> { islandManager.makeIslandLeader((Player) sender, args);})
             .setPlayerOnly(true)
             .setAliases(List.of("promote"))
         );
@@ -108,7 +108,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "party",
             "Show party information",
-            (sender, args) -> { IslandManager.showIslandParty((Player) sender);})
+            (sender, args) -> { islandManager.showIslandParty((Player) sender);})
             .setPlayerOnly(true)
             .setAliases(List.of("p"))
         );
@@ -125,14 +125,14 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "reject",
             "Reject an island invite.",
-            (sender, args) -> { IslandManager.rejectIslandInvite((Player) sender);})
+            (sender, args) -> { islandManager.rejectIslandInvite((Player) sender);})
             .setPlayerOnly(true)
         );
 
         islandCommands.addSubcommand(new CommandInfo(
             "restart",
             "Restart your island.",
-            (sender, args) -> { IslandManager.restartIsland((Player) sender);})
+            (sender, args) -> { islandManager.restartIsland((Player) sender);})
             .setPlayerOnly(true)
             .setAliases(List.of("reset"))
         );
@@ -140,7 +140,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "setbiome",
             "Set your island biome.",
-            (sender, args) -> { IslandManager.setIslandBiome((Player) sender, args);})
+            (sender, args) -> { islandManager.setIslandBiome((Player) sender, args);})
             .setPlayerOnly(true)
             .setRequiredArgs(List.of("biome"))
         );
@@ -148,7 +148,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "setfarewell",
             "Set your island farewell.",
-            (sender, args) -> { IslandManager.setFarewell((Player) sender, args);})
+            (sender, args) -> { islandManager.setFarewell((Player) sender, args);})
             .setPlayerOnly(true)
             .setRequiredArgs(List.of("farewell"))
         );
@@ -156,7 +156,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "setgreeting",
             "Set your island greeting.",
-            (sender, args) -> { IslandManager.setGreeting((Player) sender, args);})
+            (sender, args) -> { islandManager.setGreeting((Player) sender, args);})
             .setPlayerOnly(true)
             .setRequiredArgs(List.of("greeting"))
         );
@@ -164,7 +164,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "sethome",
             "Set your island home.",
-            (sender, args) -> { IslandManager.setIslandSpawn((Player) sender);})
+            (sender, args) -> { islandManager.setIslandSpawn((Player) sender);})
             .setPlayerOnly(true)
         );
 
@@ -185,7 +185,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
                 "teleport",
                 "Teleport to a party member.",
-                (sender, args) -> {IslandManager.teleportToIslandFriend((Player) sender, args);})
+                (sender, args) -> {islandManager.teleportToIslandFriend((Player) sender, args);})
                 .setPlayerOnly(true)
                 .setAliases(List.of("tp"))
                 .setRequiredArgs(List.of("friend"))

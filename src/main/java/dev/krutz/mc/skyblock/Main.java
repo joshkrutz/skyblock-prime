@@ -19,11 +19,12 @@ public class Main extends JavaPlugin {
     static final String spawnWorldName = "world";
     static final String skyblockOverworldName = "skyblock_world";
     private final CommandManager commandManager = new CommandManager();
+    private IslandManager islandManager;
 
     @Override
     public void onEnable() {
-
-        getLogger().info("Skyblock plugin has been enabled!");
+        // Load all necessary configs and data
+        ensureChallengesFileExists();
 
          // Create the skyblock world if it doesn't exist
          if (getServer().getWorld(skyblockOverworldName) == null) {
@@ -34,29 +35,33 @@ public class Main extends JavaPlugin {
             worldCreator.createWorld();
         }
 
-        // Load all necessary configs and data
-        ensureChallengesFileExists();
+        // Load all manager singletons
+        islandManager = IslandManager.getInstance(this);
 
         ServerEssentials.initialize(this);
-        IslandManager.initialize(this);
         ChallengeManager.initialize(this);
 
         // Register commands
         new EssentialsCommandManager().registerCommands(commandManager);
-        new IslandCommandManager().registerCommands(commandManager);
+        new IslandCommandManager().registerCommands(commandManager, islandManager);
         new ChallengeCommandManager().registerCommands(commandManager);
 
-        getServer().getPluginManager().registerEvents(new IslandListener(), this);
+        getServer().getPluginManager().registerEvents(new IslandListener(islandManager), this);
+
+        getLogger().info("Skyblock plugin has been enabled!");
+
        
     }
 
     @Override
     public void onDisable() {
-        IslandManager.saveDataToFile();
+        if(islandManager != null)
+            islandManager.saveData();
         
         getLogger().info("Skyblock plugin has been disabled!");
-        IslandManager.saveDataToFile();
         // Cleanup resources or save data here.
+        getServer().getScheduler().cancelTasks(this);
+
     }
 
     @Override

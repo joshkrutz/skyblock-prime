@@ -50,6 +50,12 @@ public class IslandListener implements Listener {
 
     private static final int SAFE_SPAWN_RADIUS = 16; // Adjust as needed
 
+    private IslandManager islandManager;
+
+    public IslandListener(IslandManager islandManager){
+        this.islandManager = islandManager;
+    }
+
     @EventHandler 
     public void onPlayerRespawn(PlayerRespawnEvent event){
         Player player = event.getPlayer();
@@ -57,7 +63,7 @@ public class IslandListener implements Listener {
         Location respawnLoc = event.getRespawnLocation();
 
         // If player has an island, respawn at island spawn
-        Island island = IslandManager.getIslandByPlayerUUID(player.getUniqueId().toString());
+        Island island = islandManager.getIslandByPlayerUUID(player.getUniqueId());
         
         if(island == null){
             return;
@@ -122,7 +128,7 @@ public class IslandListener implements Listener {
 
         if(!to.getWorld().getName().equals(Main.skyblockOverworldName)) return;
             
-        Island currentIsland = getIslandAtLocation(IslandManager.getIslands(), to);
+        Island currentIsland = getIslandAtLocation(islandManager.getAllIslands(), to);
         Island lastIsland = lastIslandMap.get(player);
 
         if (currentIsland != lastIsland) {
@@ -151,7 +157,7 @@ public class IslandListener implements Listener {
         Material blockType = block.getType();
 
         // Check if the block is within their island boundaries
-        boolean isWithinIsland = isLocationInIsland(blockLocation, IslandManager.getIslandByPlayerUUID(player.getUniqueId().toString()));
+        boolean isWithinIsland = isLocationInIsland(blockLocation, islandManager.getIslandByPlayerUUID(player.getUniqueId()));
 
         // Handle block breaking (left-clicking)
         if (action == Action.LEFT_CLICK_BLOCK) {
