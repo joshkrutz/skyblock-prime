@@ -30,7 +30,6 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.json.JSONObject;
-
 import org.json.JSONArray;
 
 public class IslandManager {
@@ -752,35 +751,15 @@ public class IslandManager {
             }
         }
 
-        //sendBiomeUpdatePackets(player, island);
+        ArrayList<Chunk> chunks = island.getChunks();
 
-        player.sendMessage("Your island biome has been set to " + biomeName.toLowerCase().replace("_", " ") + ".");
+        for (Chunk chunk : chunks){
+            player.getWorld().refreshChunk(chunk.getX(), chunk.getZ());
+        }
+
+
+        player.sendMessage("Your biome has been set to " + biomeName.toLowerCase().replace("_", " ") + ".");
     }
-
-    // private static void sendBiomeUpdatePackets(Player player, Island island){
-    //     ArrayList<Chunk> chunks = island.getChunks();
-
-    //     for (Chunk chunk : chunks) {
-    //         CraftChunk craftChunk = (CraftChunk) chunk;
-    //     }
-    // }
-
-    // public void sendBiomeUpdatePackets(World world, int x, int z) {
-    //     // Get the NMS world and chunk.
-    //     CraftWorld craftWorld = (CraftWorld) world;
-    //     WorldServer nmsWorld = craftWorld.getHandle();
-    //     Chunk nmsChunk = nmsWorld.getChunkAt(x, z);
-
-    //     // Create the packet for the updated chunk.
-    //     PacketPlayOutMapChunk chunkPacket = new PacketPlayOutMapChunk(nmsChunk, nmsChunk.getSections());
-
-    //     // Send the packet to all players in the world.
-    //     for (Player player : world.getPlayers()) {
-    //         if (isPlayerNearChunk(player, x, z)) {
-    //             ((org.bukkit.craftbukkit.v1_21_R1.entity.CraftPlayer) player).getHandle().b.a(chunkPacket);
-    //         }
-    //     }
-    // }
 
     /**
      * Determines if a player is near a specific chunk.

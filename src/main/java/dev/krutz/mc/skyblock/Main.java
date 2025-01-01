@@ -20,9 +20,9 @@ public class Main extends JavaPlugin {
     static final String skyblockOverworldName = "skyblock_world";
     private final CommandManager commandManager = new CommandManager();
 
-
     @Override
     public void onEnable() {
+
         getLogger().info("Skyblock plugin has been enabled!");
 
          // Create the skyblock world if it doesn't exist
@@ -63,7 +63,6 @@ public class Main extends JavaPlugin {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         return commandManager.executeCommand(sender, label, args);
     }
-
 
     private void ensureChallengesFileExists() {
         File configFile = new File(getDataFolder(), "challenges.json");
