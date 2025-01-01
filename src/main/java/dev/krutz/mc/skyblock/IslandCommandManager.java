@@ -56,6 +56,7 @@ public class IslandCommandManager {
             "Check your or another player's island info.",
             (sender, args) -> { IslandManager.showIslandInfo(sender, args);})
             .setRequiredArgs(List.of("player"))
+            .setAliases(List.of("level"))
         );
 
         islandCommands.addSubcommand(new CommandInfo(
@@ -81,11 +82,6 @@ public class IslandCommandManager {
             (sender, args) -> {IslandManager.leaveIsland((Player) sender);})
             .setPlayerOnly(true)
         );
-
-        islandCommands.addSubcommand(new CommandInfo(
-            "level", 
-            "Check your or another player's island level", 
-            null));
 
         islandCommands.addSubcommand(new CommandInfo(
             "lock",

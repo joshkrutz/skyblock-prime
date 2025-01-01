@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,12 +30,14 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
 public class IslandManager {
-    private static ArrayList<Island> islands = new ArrayList<>();
+    private static Map<Integer, Island> islands = new HashMap<>();
     private static Map<String, Island> islandInvites = new HashMap<>();
+    private static Map<Integer, Double> islandScores = new HashMap<>();
 
     private static final String ISLANDS_FILE = "island-data.json"; // Path to your islands data file
 
@@ -50,7 +53,7 @@ public class IslandManager {
         //populate islands from file
         try{
             JSONArray islandsData = loadIslandData();
-
+            calculateIslandScoresAsync();
             if (islandsData == null) {
                 return;
             }
@@ -58,12 +61,6 @@ public class IslandManager {
             for(int i = 0; i < islandsData.length(); i++){
                 JSONObject islandData = islandsData.getJSONObject(i);
                 int index = islandData.getInt("index");
-
-                // Fill in any gaps in the islands list to enable O(1) lookup
-                while(index >= islands.size() - 1){
-                    islands.add(null);
-                }
-
                 int x = islandData.getInt("x");
                 int z = islandData.getInt("z");
                 
@@ -84,7 +81,7 @@ public class IslandManager {
                 World w = Bukkit.getWorld(islandLocationData.optString("spawn_world", Main.skyblockOverworldName));
                 Location islandSpawn = new Location(w, spawnX, spawnY, spawnZ, spawnYaw, spawnPitch);
 
-                islands.add(new Island(x, z, name, index, owner, friends, enterMessage, exitMessage, islandSpawn));
+                islands.put(index, new Island(x, z, name, index, owner, friends, enterMessage, exitMessage, islandSpawn));
             }
             
         }
@@ -92,6 +89,19 @@ public class IslandManager {
             e.printStackTrace();
         }
     }
+
+    public static void calculateIslandScoresAsync() {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                for (Island island : islands.values()) {
+                    island.calculateScore();
+                    islandScores.put(island.getIndex(), island.getScore());
+                }
+            }
+        }.runTaskTimerAsynchronously(plugin, 0, 1200L); // Run every minute
+    }
+    
 
     public static void saveDataToFile(){
         try{
@@ -104,12 +114,7 @@ public class IslandManager {
                 return;
             }
 
-            for (Island curIsland : islands) {
-                if(curIsland == null || !curIsland.changed)
-                    continue;
-
-                
-
+            for (Island curIsland : islands.values()) {
                 JSONObject island = new JSONObject();
                 int json_index = -1;
                 for(int i = 0; i < islandsData.length(); i++){
@@ -170,7 +175,7 @@ public class IslandManager {
 
     public static void updateIsland(Island updatedIsland){
         updatedIsland.changed = true;
-        islands.set(updatedIsland.getIndex(), updatedIsland);
+        islands.put(updatedIsland.getIndex(), updatedIsland);
         saveDataToFile();
     }
 
@@ -179,7 +184,7 @@ public class IslandManager {
     }
 
     public static Island getIslandByOwnerUUID(String uuid){
-        for (Island island : islands) {
+        for (Island island : islands.values()) {
             if(island == null){
                 continue;
             }
@@ -193,7 +198,7 @@ public class IslandManager {
     }
 
     public static Island getIslandByPlayerUUID(String uuid){
-        for (Island island : islands) {
+        for (Island island : islands.values()) {
             if(island == null){
                 continue;
             }
@@ -307,7 +312,7 @@ public class IslandManager {
         newIsland.setIslandSpawn();
         newIsland.changed = true;
 
-        islands.add(newIsland);
+        islands.put(newIsland.getIndex(), newIsland);
 
         saveDataToFile();
 
@@ -412,7 +417,7 @@ public class IslandManager {
     }
 
     public static ArrayList<Island> getIslands() {
-        return islands;
+        return islands.values().stream().collect(Collectors.toCollection(ArrayList::new));
     }
 
     public static void invitePlayerToIsland(Player player, String[] args) {
@@ -650,6 +655,24 @@ public class IslandManager {
         showIslandInfoHelper(sender, playerUUID);
     }
 
+    private static int getRank(Island island) {
+
+        if (island == null) {
+            return -1;
+        }
+
+        if (islandScores.isEmpty()) {
+            return -1;
+        }
+
+        islandScores = islandScores.entrySet().stream()
+            .sorted(Map.Entry.<Integer, Double>comparingByValue().reversed())
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+
+        
+        return new ArrayList<>(islandScores.keySet()).indexOf(island.getIndex()) + 1;
+    }
+
     private static void showIslandInfoHelper(CommandSender sender, String playerUUID){
         Island island = getIslandByPlayerUUID(playerUUID);
         if (island == null) {
@@ -669,14 +692,21 @@ public class IslandManager {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
     
             sender.sendMessage("Island: " + island.getName());
-            sender.sendMessage("Score: " + score);
+            sender.sendMessage("Rank: " + getRank(island) + "/" + islands.size());
+            sender.sendMessage("Score: " + String.format("%.2f", score));
             
             // Display top 10 blocks
             int i = 0;
             for (Map.Entry<String, Double> entry : scoreBreakdown.entrySet()) {
                 if(i >= 10)
                     break;
-                sender.sendMessage("* " + entry.getKey() + ": " + entry.getValue());
+                String key = entry.getKey();
+                String block_key = key.replace("_", " ");
+                String[] words = block_key.split(" ");
+                words = Arrays.stream(words).map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase()).toArray(String[]::new);
+                block_key = String.join(" ", words);
+
+                sender.sendMessage("* " + block_key + ": " + String.format("%.2f", entry.getValue()));
                 i++;
             }
     
@@ -884,7 +914,6 @@ class Island {
     }
             
     public void calculateScore() {
-
         score = 0;
         scoreBreakdown = new HashMap<>();
 
