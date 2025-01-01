@@ -754,7 +754,13 @@ public class IslandManager {
         ArrayList<Chunk> chunks = island.getChunks();
 
         for (Chunk chunk : chunks){
-            player.getWorld().refreshChunk(chunk.getX(), chunk.getZ());
+            // Update the biome for all players near the chunk
+            for (Entity entity : chunk.getEntities()) {
+                if (entity instanceof Player) {
+                    Player nearbyPlayer = (Player) entity;
+                    nearbyPlayer.getWorld().refreshChunk(chunk.getX(), chunk.getZ());
+                }
+            }
         }
 
 
