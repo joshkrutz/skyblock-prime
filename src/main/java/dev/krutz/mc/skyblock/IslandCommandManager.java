@@ -87,7 +87,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "lock",
             "Lock your island to non-party members.",
-            null)
+            (sender, args) -> { islandManager.lockWarp((Player) sender);})
             .setPlayerOnly(true)
         );
 
@@ -102,8 +102,9 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "open",
             "Open your island to visitors.",
-            null)
+            (sender, args) -> { islandManager.unlockWarp((Player) sender);})
             .setPlayerOnly(true)
+            .setAliases(List.of("unlock"))
         );
 
         islandCommands.addSubcommand(new CommandInfo(
@@ -179,7 +180,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "setwarp",
             "Set your island's warp location.",
-            null)
+            (sender, args) -> { islandManager.setIslandWarp((Player) sender);})
             .setPlayerOnly(true)
         );
 
@@ -195,7 +196,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "togglewarp",
             "Activate or deactivate your island's warp.",
-            null)
+            (sender, args) -> { islandManager.toggleWarpLock((Player) sender);})
             .setPlayerOnly(true)
             .setAliases(List.of("tw"))
         );
@@ -203,7 +204,7 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "top",
             "Check the top islands.",
-            null)
+            (sender, args) -> { islandManager.sendTopIslandsMsg(sender);})
         );
 
         islandCommands.addSubcommand(new CommandInfo(
@@ -213,6 +214,14 @@ public class IslandCommandManager {
             .setPlayerOnly(true)
             .setRequiredArgs(List.of("player"))
             .setAliases(List.of("pardon"))
+        );
+
+        islandCommands.addSubcommand(new CommandInfo(
+            "warp",
+            "Warp to your or another player's island.",
+            (sender, args) -> { islandManager.warpTeleport((Player) sender, args);})
+            .setPlayerOnly(true)
+            .setRequiredArgs(List.of("player"))
         );
 
         commandManager.registerCommand(islandCommands);

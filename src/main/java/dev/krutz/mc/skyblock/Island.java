@@ -20,7 +20,6 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.jetbrains.annotations.NotNull;
 
 import com.google.gson.annotations.SerializedName;
 
@@ -57,12 +56,14 @@ public class Island {
     @Expose @SerializedName("name") private String name;
     @Expose @SerializedName("index") private final int index;
     @Expose @SerializedName("owner") private String ownerUUID;
-    @Expose @SerializedName("friends") private List<String> friends;
-    @Expose @SerializedName("ban_list") private List<String> banList;
+    @Expose @SerializedName("friends") private List<IslandFriend> friends;
+    @Expose @SerializedName("ban_list") private List<UUID> banList;
     @Expose @SerializedName("greeting_message") private String enterMessage;
     @Expose @SerializedName("farewell_message") private String exitMessage;
     @Expose @SerializedName("island_spawn") private IslandLocation islandSpawn;
-    
+    @Expose @SerializedName("island_warp") private IslandLocation islandWarp;
+    @Expose @SerializedName("isLocked") private boolean isLocked = false;
+
     // Volatile island data that is not serialized
     private boolean isModified = false;
     private double score = 0;
@@ -72,7 +73,7 @@ public class Island {
     * Islands instantiated with this constructor are assumed to be loaded from file
     * The modified flag is set to false because the island is not modified after loading
     */
-    public Island(int x, int z, String name, int index, String ownerUUID, List<String> friends, List<String> banList, String enterMessage, String exitMessage, Location islandSpawn){
+    public Island(int x, int z, String name, int index, String ownerUUID, List<IslandFriend> friends, List<UUID> banList, String enterMessage, String exitMessage, Location islandSpawn, Location islandWarp, boolean isLocked) {
         this.x = x;
         this.z = z;
         this.name = name;
@@ -83,6 +84,8 @@ public class Island {
         this.exitMessage = exitMessage;
         this.index = index;
         this.islandSpawn = new IslandLocation(islandSpawn);
+        this.islandWarp = new IslandLocation(islandWarp);
+        this.isLocked = isLocked;
     }
 
     /** 
@@ -522,6 +525,8 @@ public class Island {
         friends = new ArrayList<>();
         banList = new ArrayList<>();
         setIslandSpawn();
+        islandWarp = new IslandLocation(getIslandSpawn());
+        isLocked = false;
         isModified = true;
     }
 
@@ -548,11 +553,28 @@ public class Island {
     }
 
     /**
+     * Set the island warp point to a specific location
+     * @param location
+     */
+    public void setIslandWarp(Location location){
+        islandWarp = new IslandLocation(location);
+        isModified = true;
+    }
+
+    /**
      * Get the island spawn point
      * @return island spawn point
      */
     public Location getIslandSpawn(){
         return islandSpawn.getLocation();
+    }
+
+    /**
+     * Get the island warp point
+     * @return island warp point
+     */
+    public Location getIslandWarp(){
+        return islandWarp.getLocation();
     }
 
     /**
@@ -564,11 +586,36 @@ public class Island {
     }
 
     /**
+     * Lock the island. This prevents players from building on the island and using island warp.
+     */
+    public void lockIsland(){
+        isLocked = true;
+        isModified = true;
+    }
+
+    /**
+     * Unlock the island. This allows players to build on the island and use island warp.
+     */
+    public void unlockIsland(){
+        isLocked = false;
+        isModified = true;
+    }
+
+    /**
+     * Get the lock status of the island
+     * @param isLocked
+     */
+    public boolean isLocked(){
+        return isLocked;
+    }
+
+
+    /**
      * Add a friend to the island party
      * @param friendUUID String UUID of the friend to add
      */
-    public void addFriend(String friendUUID){
-        friends.add(friendUUID);
+    public void addFriend(UUID friendUUID){
+        friends.add(new IslandFriend(friendUUID));
         isModified = true;
     }
 
@@ -576,8 +623,8 @@ public class Island {
      * Remove a friend from the island party
      * @param friendUUID String UUID of the friend to remove
      */
-    public void removeFriend(String friendUUID){
-        friends.remove(friendUUID);
+    public void removeFriend(UUID friendUUID){
+        friends.remove(new IslandFriend(friendUUID));
         isModified = true;
     }
 
@@ -585,7 +632,7 @@ public class Island {
      * Get a list of all friends of the island
      * @return List of friends
      */
-    public List<String> getFriends(){
+    public List<IslandFriend> getFriends(){
         return friends;
     }
 
@@ -594,7 +641,7 @@ public class Island {
      * @return
      */
     public void banPlayer(UUID playerUUID){
-        banList.add(playerUUID.toString());
+        banList.add(playerUUID);
         isModified = true;
     }
 
@@ -603,7 +650,7 @@ public class Island {
      * @param playerUUID
      */
     public void unbanPlayer(UUID playerUUID){
-        banList.remove(playerUUID.toString());
+        banList.remove(playerUUID);
         isModified = true;
     }
 

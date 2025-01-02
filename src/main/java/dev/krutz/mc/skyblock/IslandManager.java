@@ -41,6 +41,7 @@ public class IslandManager {
     private static final long SCORE_TASK_INTERVAL = 100L; // Interval in ticks to calculate island scores
     private static final long SAVE_TASK_INTERVAL = 20 * 60 * 5; // Interval in ticks to save island data to file
     private static final long INVITATION_EXPIRATION_TIME = 20 * 30; // Time in ticks before an invitation expires
+    private static final int NUM_ISLANDS_IN_TOP_ISLANDS_MESSAGE = 10; // Number of islands to display in the top islands message
 
     // Instance variables
     private final JavaPlugin plugin;
@@ -299,16 +300,16 @@ public class IslandManager {
             return;
         }
 
-        ArrayList<Player> players = new ArrayList<>();
-        players.add(player);
-        for(String friendUUID : island.getFriends()){
-            Player friend = Bukkit.getPlayer(UUID.fromString(friendUUID));
-            if(friend != null){
-                players.add(friend);
+        ArrayList<Player> islandPlayers = new ArrayList<>();
+        islandPlayers.add(player);
+        for(IslandFriend friend : island.getFriends()){
+            Player playerFriend = Bukkit.getPlayer(friend.getUUID());
+            if(playerFriend != null){
+                islandPlayers.add(playerFriend);
             }
         }
 
-        for(Player p : players){
+        for(Player p : islandPlayers){
             // If they are in the skyblock world, move player to spawn
             if( p.getLocation().getWorld().getName().equals(Main.skyblockWorldName))
             p.teleport(Bukkit.getWorld(Main.spawnWorldName).getSpawnLocation());
@@ -362,6 +363,33 @@ public class IslandManager {
     }
 
     /**
+     * Set the player's island warp point to their current location.
+     * If the player does not have an island, nothing happens.
+     * If the player is not on their island, nothing happens.
+     * @param player
+     */
+    public void setIslandWarp(Player player){
+        // Check that player has an island
+        Island island = getIslandByPlayerUUID(player.getUniqueId());
+        if(island == null){
+            player.sendMessage("You do not have an island to set the waro for.");
+            return;
+        }
+
+        // Check that player is on their island
+        if(!IslandListener.isPlayerOnTheirIsland(player, island)){
+            player.sendMessage("You must be on your island to set the warp point.");
+            return;
+        }
+
+        // Set the island spawn point
+        island.setIslandWarp(player.getLocation());
+
+        // Notify the player
+        player.sendMessage("Island warp point set to your current location.");
+    }
+
+    /**
      * Create a new island for the player. If the player belongs to a party, they will be prompted to leave it first.
      * If the player owns an island, they will be prompted to restart it instead.
      * @param player
@@ -389,7 +417,6 @@ public class IslandManager {
         player.teleport(newIsland.getIslandSpawn());
     }
 
-    
     /**
      * Teleport the player to a party member.
      * If the player does not have an island, nothing happens.
@@ -444,6 +471,41 @@ public class IslandManager {
         player.teleport(friend.getLocation());
     }
 
+     /**
+     * Teleport the player to a the requested island warp location
+     * @param player
+     * @param args - Optional player name to teleport to
+     */
+    public void warpTeleport(Player player, String[] args) {
+        OfflinePlayer targetPlayer = player;
+        if(args.length >= 1){
+            targetPlayer = Bukkit.getOfflinePlayer(args[0]);
+        }
+
+        // Check if target player has an island
+        Island island = getIslandByPlayerUUID(targetPlayer.getUniqueId());
+        if(island == null){
+            player.sendMessage(targetPlayer.getName() + " does not have an island to warp to.");
+            return;
+        }
+
+        // Check if target player has a warp location set
+        if(island.getIslandWarp() == null){
+            player.sendMessage(targetPlayer.getName() + " does not have a warp location set.");
+            return;
+        }
+
+        // Check if island warp is open
+        if(island.isLocked()){
+            player.sendMessage(targetPlayer.getName() + "'s island warp is not open.");
+            return;
+        }
+
+        // Teleport the player to the island warp location
+        player.teleport(island.getIslandWarp());
+    }
+
+
     /**
      * Set the greeting message for the player's island.
      * If the player does not have an island, nothing happens.
@@ -486,6 +548,57 @@ public class IslandManager {
 
         String farewell = String.join(" ", args);
         island.setFarewellMessage(farewell);
+    }
+
+    /**
+     * Toggle the island warp lock status.
+     * @param player
+     */
+    public void toggleWarpLock(Player player){
+        Island island = getIslandByPlayerUUID(player.getUniqueId());
+        if(island == null){
+            player.sendMessage("You do not have an island to use this command on.");
+            return;
+        }
+
+        if(island.isLocked()){
+            island.unlockIsland();
+        }
+        else{
+            island.lockIsland();
+        }
+
+        player.sendMessage("Island warp is now " + (island.isLocked() ? "locked" : "unlocked") + ".");
+    }
+
+    /**
+     * Unlock the island warp
+     * @param player
+     */
+    public void unlockWarp(Player player){
+        Island island = getIslandByPlayerUUID(player.getUniqueId());
+        if(island == null){
+            player.sendMessage("You do not have an island to use this command on.");
+            return;
+        }
+
+        island.unlockIsland();
+        player.sendMessage("Island warp is now unlocked.");
+    }
+
+    /**
+     * Lock the island warp
+     * @param player
+     */
+    public void lockWarp(Player player){
+        Island island = getIslandByPlayerUUID(player.getUniqueId());
+        if(island == null){
+            player.sendMessage("You do not have an island to use this command on.");
+            return;
+        }
+
+        island.lockIsland();
+        player.sendMessage("Island warp is now locked.");
     }
 
     /**
@@ -580,13 +693,13 @@ public class IslandManager {
                 islands.remove(currentIsland.getIndex());
             } else {
                 // Remove player from friends list
-                currentIsland.removeFriend(player.getUniqueId().toString());
+                currentIsland.removeFriend(player.getUniqueId());
             }
         }
 
         // Add to new island
         Island islandToJoin = islandInvites.get(player.getUniqueId().toString());
-        islandToJoin.addFriend(player.getUniqueId().toString());
+        islandToJoin.addFriend(player.getUniqueId());
 
         // Reset player's state
         resetPlayerData(player);
@@ -728,7 +841,7 @@ public class IslandManager {
             return;
         }
 
-        island.removeFriend(friend.getUniqueId().toString());
+        island.removeFriend(friend.getUniqueId());
         resetPlayerData(friend);
 
         player.sendMessage("Player " + friendName + " has been kicked from the island.");
@@ -752,7 +865,7 @@ public class IslandManager {
             return;
         }
 
-        island.removeFriend(player.getUniqueId().toString());
+        island.removeFriend(player.getUniqueId());
 
         player.sendMessage("You have left " + island.getName() + ".");
         player.teleport(Bukkit.getWorld(Main.spawnWorldName).getSpawnLocation());
@@ -786,7 +899,7 @@ public class IslandManager {
         island.setOwnerUUID(newLeaderUUID);
 
         // Add the old owner to the friends list
-        island.addFriend(sender.getUniqueId().toString());
+        island.addFriend(sender.getUniqueId());
 
         sender.sendMessage("You have promoted " + newLeaderName + " to island leader.");
 
@@ -809,8 +922,8 @@ public class IslandManager {
         player.sendMessage("Island: " + island.getName());
         player.sendMessage("Owner: " + Bukkit.getOfflinePlayer(island.getOwnerUUID()).getName());
         player.sendMessage("Friends: ");
-        for (String friendUUID : island.getFriends()) {
-            player.sendMessage("* " + Bukkit.getOfflinePlayer(UUID.fromString(friendUUID)).getName());
+        for (IslandFriend friend : island.getFriends()) {
+            player.sendMessage("* " + Bukkit.getOfflinePlayer(friend.getUUID()).getName());
         }
     }
 
@@ -875,6 +988,35 @@ public class IslandManager {
             block_key = String.join(" ", words);
 
             sender.sendMessage("* " + block_key + ": " + String.format("%.2f", entry.getValue()));
+            i++;
+        }
+    }
+
+    /**
+     * Show the top 10 islands based on score.
+     */
+    public void sendTopIslandsMsg(CommandSender sender){
+        if(islandScores.isEmpty()){
+            sender.sendMessage("No islands have been created yet.");
+            return;
+        }
+
+        islandScores = islandScores.entrySet().stream()
+            .sorted(Map.Entry.<Integer, Double>comparingByValue().reversed())
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+
+        int numTop = Math.min(NUM_ISLANDS_IN_TOP_ISLANDS_MESSAGE, islandScores.size());
+
+        sender.sendMessage("Top " + numTop + " Islands:");
+        int i = 0;
+        for (Map.Entry<Integer, Double> entry : islandScores.entrySet()) {
+            if(i >= 10)
+                break;
+            Island island = getIslandByIndex(entry.getKey());
+            if(island == null){
+                continue;
+            }
+            sender.sendMessage(i + 1 + ". " + island.getName() + " - " + String.format("%.2f", entry.getValue()));
             i++;
         }
     }

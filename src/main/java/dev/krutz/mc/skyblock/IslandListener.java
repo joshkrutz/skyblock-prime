@@ -115,9 +115,18 @@ public class IslandListener implements Listener {
         // If teleport location is to a banned island, cancel the teleport
         if(to.getWorld().getName().equals(Main.spawnWorldName)) return;
         Island toIsland = getIslandAtLocation(islandManager.getAllIslands(), to);
+
+        // Check if player is banned from the island
         if (toIsland != null && toIsland.hasBanned(event.getPlayer().getUniqueId())) {
             event.setCancelled(true);
             event.getPlayer().sendMessage("You are barred from entering " + toIsland.getName() + ".");
+            return;
+        }
+
+        // Check if island is locked
+        if (toIsland != null && toIsland.isLocked()) {
+            event.setCancelled(true);
+            event.getPlayer().sendMessage("This island is locked. You cannot enter.");
             return;
         }
 
@@ -163,6 +172,14 @@ public class IslandListener implements Listener {
         // If player is on a banned island, send them to spawn
         if (currentIsland != null && currentIsland.hasBanned(player.getUniqueId())) {
             player.sendMessage(Component.text("You are barred from entering " + currentIsland.getName() + ".").color(NamedTextColor.RED));
+            player.teleport(Bukkit.getWorld(Main.spawnWorldName).getSpawnLocation());
+            event.setCancelled(true);
+        }
+
+        // If island is locked, send them to spawn
+        if (currentIsland != null && currentIsland.isLocked()) {
+            player.sendMessage(Component.text("This island is locked. You cannot enter.").color(NamedTextColor.RED));
+            player.teleport(Bukkit.getWorld(Main.spawnWorldName).getSpawnLocation());
             event.setCancelled(true);
         }
     }
