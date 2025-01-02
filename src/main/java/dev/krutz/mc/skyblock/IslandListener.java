@@ -14,6 +14,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -25,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -43,19 +45,43 @@ import org.bukkit.block.Block;
 // - Player can use pistons to exceed island radius
 // 
 
+/*
+ * A listener singleton class for handling island related events
+ */
 public class IslandListener implements Listener {
+    private static IslandListener instance;
 
-    private final Map<Player, Island> lastIslandMap = new HashMap<>();
-    private static final Map<UUID, Inventory> openMenus = new HashMap<>();
-
+    // Configurable values
     private static final int SAFE_SPAWN_RADIUS = 16; // Adjust as needed
 
+    // Instance variables
+    private HashMap<Player, Island> lastIslandMap = new HashMap<>();
+    private HashMap<UUID, Inventory> openMenus = new HashMap<>();
     private IslandManager islandManager;
 
-    public IslandListener(IslandManager islandManager){
+    /**
+     * Get the instance of the IslandListener singleton.
+     * @return The IslandListener instance
+     */
+    public static synchronized IslandListener getInstance(IslandManager islandManager) {
+        // Create a new instance if it doesn't exist
+        if (instance == null) {
+            instance = new IslandListener(islandManager);
+        }
+        return instance;
+    }
+
+    /**
+     * Private constructor for the IslandListener singleton.
+     */
+    private IslandListener(IslandManager islandManager){
         this.islandManager = islandManager;
     }
 
+    /**
+     * On player respawn, ensure they respawn at their island spawn point, if they have one.
+     * @param event
+     */
     @EventHandler 
     public void onPlayerRespawn(PlayerRespawnEvent event){
         Player player = event.getPlayer();
@@ -77,9 +103,24 @@ public class IslandListener implements Listener {
         event.setRespawnLocation(safeLocation);
     }
 
+    /**
+     * On any player teleport, ensure they teleport to a safe location.
+     * This means not in the air and not in lava.
+     * @param event
+     */
     @EventHandler
     public void onPlayerTeleport(PlayerTeleportEvent event){
         Location to = event.getTo();
+
+        // If teleport location is to a banned island, cancel the teleport
+        if(to.getWorld().getName().equals(Main.spawnWorldName)) return;
+        Island toIsland = getIslandAtLocation(islandManager.getAllIslands(), to);
+        if (toIsland != null && toIsland.hasBanned(event.getPlayer().getUniqueId())) {
+            event.setCancelled(true);
+            event.getPlayer().sendMessage("You are barred from entering " + toIsland.getName() + ".");
+            return;
+        }
+
 
         // Check if location is safe
         Location safeLocation = findSafeLocation(to);
@@ -87,41 +128,17 @@ public class IslandListener implements Listener {
         event.setTo(safeLocation);
     }
 
-    private Location findSafeLocation(Location location) {
-        World world = location.getWorld();
-        if (world == null) return location;
-    
-        // Check progressively larger Manhattan distances
-        for (int radius = 0; radius <= SAFE_SPAWN_RADIUS; radius++) {
-            for (int x = -radius; x <= radius; x++) {
-                for (int z = -radius; z <= radius; z++) {
-                    for (int y = -SAFE_SPAWN_RADIUS; y <= SAFE_SPAWN_RADIUS; y++) {
-                        // Only check blocks that are exactly at the current radius (Manhattan distance)
-                        if (Math.abs(x) + Math.abs(z) != radius) continue;
-    
-                        Location checkLocation = location.clone().add(x, y, z);
-    
-                        // Get blocks at the current location and below
-                        Material blockType = world.getBlockAt(checkLocation).getType();
-                        Material belowType = world.getBlockAt(checkLocation.clone().add(0, -1, 0)).getType();
-    
-                        // Check for passable block and solid ground below
-                        if (blockType.isAir() && belowType.isSolid() && belowType != Material.LAVA) {
-                            return checkLocation;
-                        }
-                    }
-                }
-            }
-        }
-    
-        // If no safe location is found, return the original
-        return location;
-    }
-    
-
+    /**
+     * On player move, check if they have entered/left a new island and send greeting/farewell messages.
+     * If player is banned from the island, prevent them from entering.
+     * @param event
+     */
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
+
+        if(player.getLocation().getWorld().getName().equals(Main.spawnWorldName)) return;
+
         Location to = event.getTo();
 
         if (to == null) return;
@@ -133,17 +150,28 @@ public class IslandListener implements Listener {
 
         if (currentIsland != lastIsland) {
             if (lastIsland != null) {
+                // Player left the last island
                 player.sendMessage(lastIsland.getFarewellMessage());
             }
             if (currentIsland != null) {
+                // Player entered a new island
                 player.sendMessage(currentIsland.getGreetingMessage());
             }
             lastIslandMap.put(player, currentIsland);
+        }
+
+        // If player is on a banned island, send them to spawn
+        if (currentIsland != null && currentIsland.hasBanned(player.getUniqueId())) {
+            player.sendMessage(Component.text("You are barred from entering " + currentIsland.getName() + ".").color(NamedTextColor.RED));
+            event.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
+
+        if(event.getPlayer().getLocation().getWorld().getName().equals(Main.spawnWorldName)) return;
+
         Player player = event.getPlayer();
         Action action = event.getAction();
         Block block = event.getClickedBlock();
@@ -269,6 +297,49 @@ public class IslandListener implements Listener {
 
 
     }
+
+    ////////////////////////////////////////////
+    /// Helper methods
+    ////////////////////////////////////////////
+    
+    /**
+     * Find a safe location near the given location given SAFE_SPAWN_RADIUS.
+     * A safe location is one that is not in the air and has solid ground below.
+     * @param location The location to find a safe location near
+     * @return If a safe location is found, return it. Otherwise, return the original location.
+     */
+    private Location findSafeLocation(Location location) {
+        World world = location.getWorld();
+        if (world == null) return location;
+    
+        // Check progressively larger Manhattan distances
+        for (int radius = 0; radius <= SAFE_SPAWN_RADIUS; radius++) {
+            for (int x = -radius; x <= radius; x++) {
+                for (int z = -radius; z <= radius; z++) {
+                    for (int y = -SAFE_SPAWN_RADIUS; y <= SAFE_SPAWN_RADIUS; y++) {
+                        // Only check blocks that are exactly at the current radius (Manhattan distance)
+                        if (Math.abs(x) + Math.abs(z) != radius) continue;
+    
+                        Location checkLocation = location.clone().add(x, y, z);
+    
+                        // Get blocks at the current location and below
+                        Material blockType = world.getBlockAt(checkLocation).getType();
+                        Material belowType = world.getBlockAt(checkLocation.clone().add(0, -1, 0)).getType();
+    
+                        // Check for passable block and solid ground below
+                        if (blockType.isAir() && belowType.isSolid() && belowType != Material.LAVA) {
+                            return checkLocation;
+                        }
+                    }
+                }
+            }
+        }
+    
+        // If no safe location is found, return the original
+        return location;
+    }
+    
+
 
     private Island getIslandAtLocation(ArrayList<Island> islands, Location from) {
         for (Island island : islands) {

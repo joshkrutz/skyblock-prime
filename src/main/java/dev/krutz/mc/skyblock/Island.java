@@ -20,6 +20,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.jetbrains.annotations.NotNull;
 
 import com.google.gson.annotations.SerializedName;
 
@@ -57,6 +58,7 @@ public class Island {
     @Expose @SerializedName("index") private final int index;
     @Expose @SerializedName("owner") private String ownerUUID;
     @Expose @SerializedName("friends") private List<String> friends;
+    @Expose @SerializedName("ban_list") private List<String> banList;
     @Expose @SerializedName("greeting_message") private String enterMessage;
     @Expose @SerializedName("farewell_message") private String exitMessage;
     @Expose @SerializedName("island_spawn") private IslandLocation islandSpawn;
@@ -70,12 +72,13 @@ public class Island {
     * Islands instantiated with this constructor are assumed to be loaded from file
     * The modified flag is set to false because the island is not modified after loading
     */
-    public Island(int x, int z, String name, int index, String ownerUUID, List<String> friends, String enterMessage, String exitMessage, Location islandSpawn){
+    public Island(int x, int z, String name, int index, String ownerUUID, List<String> friends, List<String> banList, String enterMessage, String exitMessage, Location islandSpawn){
         this.x = x;
         this.z = z;
         this.name = name;
         this.ownerUUID = ownerUUID;
         this.friends = friends;
+        this.banList = banList;
         this.enterMessage = enterMessage;
         this.exitMessage = exitMessage;
         this.index = index;
@@ -93,7 +96,17 @@ public class Island {
         float chunksZ = (((index / MAX_ISLANDS_PER_ROW) + 1) * CHUNK_BUFFER) + ((index / MAX_ISLANDS_PER_ROW) * 2 + 1) * CHUNK_ISLAND_RADIUS;
         x = ChunkToBlock(chunksX) + BLOCKS_PER_CHUNK / 2;
         z = ChunkToBlock(chunksZ) + BLOCKS_PER_CHUNK / 2;
+        ownerUUID = player.getUniqueId().toString();
+        clearIslandBlocks();
         resetIslandData();
+    }
+
+    /**
+     * Set lastIslandIndex from the last island index from file.
+     * @param newIndex
+     */
+    public static void setLastIslandIndex(int newIndex){
+        lastIslandIndex = newIndex;
     }
 
     ////////////////////////////////////////////////////////////
@@ -424,6 +437,15 @@ public class Island {
         return ownerUUID.equals(playerUUID.toString());
     }
 
+    /**
+     * Check if a player is banned from the island
+     * @param playerUUID UUID of the player to check
+     * @return True if the player is banned, false otherwise
+     */
+    public boolean hasBanned(UUID uniqueId) {
+        return banList.contains(uniqueId.toString());
+    }
+
     ////////////////////////////////////////////////////////////
     /// Getters and Setters
     /// These functions are used to access and modify the island data
@@ -491,12 +513,14 @@ public class Island {
      * Reset all island data to default values. This does not reset the island center or index as these are unique to each island.
      */
     public void resetIslandData(){
+        
         Player player = Bukkit.getPlayer(UUID.fromString(ownerUUID));
         name = player.getName() + "\'s Island";
         enterMessage = "Welcome to " + name;
         exitMessage = "Now leaving " + name;
         ownerUUID = player.getUniqueId().toString();
         friends = new ArrayList<>();
+        banList = new ArrayList<>();
         setIslandSpawn();
         isModified = true;
     }
@@ -536,7 +560,7 @@ public class Island {
      * @return island center location
      */
     public Location getIslandCenter(){
-        return new Location(islandSpawn.getWorld(), x, Y_HEIGHT, z);
+        return new Location(Bukkit.getWorld(Main.skyblockWorldName), x, Y_HEIGHT, z);
     }
 
     /**
@@ -563,6 +587,24 @@ public class Island {
      */
     public List<String> getFriends(){
         return friends;
+    }
+
+    /**
+     * Add a player to the island ban list
+     * @return
+     */
+    public void banPlayer(UUID playerUUID){
+        banList.add(playerUUID.toString());
+        isModified = true;
+    }
+
+    /**
+     * Remove a player from the island ban list
+     * @param playerUUID
+     */
+    public void unbanPlayer(UUID playerUUID){
+        banList.remove(playerUUID.toString());
+        isModified = true;
     }
 
     /**
@@ -656,6 +698,5 @@ public class Island {
     public void setOwnerUUID(UUID newOwnerUUID) {
         setOwnerUUID(newOwnerUUID.toString());
     }
-
 }
 

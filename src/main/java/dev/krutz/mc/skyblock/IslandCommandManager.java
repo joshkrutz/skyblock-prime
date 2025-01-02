@@ -33,8 +33,9 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "ban",
              "Ban a player from your island", 
-             null)
+             (sender, args) -> { islandManager.banPlayerFromIsland((Player) sender, args);})
             .setPlayerOnly(true)
+            .setRequiredArgs(List.of("player"))
         );
 
         islandCommands.addSubcommand(new CommandInfo(
@@ -208,7 +209,10 @@ public class IslandCommandManager {
         islandCommands.addSubcommand(new CommandInfo(
             "unban",
             "Unban a player from your island.",
-            null)
+            (sender, args) -> { islandManager.unbanPlayerFromIsland((Player) sender, args);})
+            .setPlayerOnly(true)
+            .setRequiredArgs(List.of("player"))
+            .setAliases(List.of("pardon"))
         );
 
         commandManager.registerCommand(islandCommands);

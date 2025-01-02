@@ -46,7 +46,7 @@ public class Main extends JavaPlugin {
         new IslandCommandManager().registerCommands(commandManager, islandManager);
         new ChallengeCommandManager().registerCommands(commandManager);
 
-        getServer().getPluginManager().registerEvents(new IslandListener(islandManager), this);
+        getServer().getPluginManager().registerEvents(IslandListener.getInstance(islandManager), this);
 
         getLogger().info("Skyblock plugin has been enabled!");
 

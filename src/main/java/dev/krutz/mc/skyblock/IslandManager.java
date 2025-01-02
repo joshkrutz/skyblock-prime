@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.block.Biome;
 import org.bukkit.command.CommandSender;
@@ -35,15 +36,17 @@ import com.google.gson.reflect.TypeToken;
 public class IslandManager {
     private static IslandManager instance;
 
-    private final JavaPlugin plugin;
-    private Map<Integer, Island> islands = new HashMap<>();
-    private Map<String, Island> islandInvites = new HashMap<>();
-    private Map<Integer, Double> islandScores = new ConcurrentHashMap<>();
-
+    // Configurable values
     private static final String ISLANDS_FILE = "island-data.json"; // Path to your islands data file
     private static final long SCORE_TASK_INTERVAL = 100L; // Interval in ticks to calculate island scores
     private static final long SAVE_TASK_INTERVAL = 20 * 60 * 5; // Interval in ticks to save island data to file
     private static final long INVITATION_EXPIRATION_TIME = 20 * 30; // Time in ticks before an invitation expires
+
+    // Instance variables
+    private final JavaPlugin plugin;
+    private Map<Integer, Island> islands = new ConcurrentHashMap<>();
+    private Map<String, Island> islandInvites = new ConcurrentHashMap<>();
+    private Map<Integer, Double> islandScores = new ConcurrentHashMap<>();
 
     /**
      * Get the instance of the IslandManager singleton.
@@ -139,6 +142,8 @@ public class IslandManager {
                 for (Island island : loadedIslands) {
                     islands.put(island.getIndex(), island);
                 }
+                // Get last island index
+                Island.setLastIslandIndex(loadedIslands.size());
             }
         }
         catch (IOException e) {
@@ -263,6 +268,7 @@ public class IslandManager {
         Island island = getIslandByPlayerUUID(player.getUniqueId());
 
         if( island == null){
+            player.sendMessage("You do not have an island to teleport to.");
             return;
         }
 
@@ -293,25 +299,39 @@ public class IslandManager {
             return;
         }
 
-        // If they are in the skyblock world, move player to spawn
-        if( player.getLocation().getWorld().getName().equals(Main.skyblockWorldName))
-            player.teleport(Bukkit.getWorld(Main.spawnWorldName).getSpawnLocation());
-        
+        ArrayList<Player> players = new ArrayList<>();
+        players.add(player);
+        for(String friendUUID : island.getFriends()){
+            Player friend = Bukkit.getPlayer(UUID.fromString(friendUUID));
+            if(friend != null){
+                players.add(friend);
+            }
+        }
 
-        // Reset player's state
-        resetPlayerData(player);
+        for(Player p : players){
+            // If they are in the skyblock world, move player to spawn
+            if( p.getLocation().getWorld().getName().equals(Main.skyblockWorldName))
+            p.teleport(Bukkit.getWorld(Main.spawnWorldName).getSpawnLocation());
+            
+            // Reset player's state
+            resetPlayerData(p);
 
-        // Clear the island
-        island.clearIslandBlocks();
+            // Notify the player
+            if (p.equals(player))
+                p.sendMessage("Your island has been reset. Use /island home to teleport to your new island.");
+            else
+                p.sendMessage("The island has been reset. Please wait for the owner to invite you back or create your own island.");
+            
+        }
 
-        // Reset the island data to default and rebuild the island
-        island.resetIslandData();
-        island.buildIsland();
+         // Clear the island
+         island.clearIslandBlocks();
 
-        // Notify the player
-        player.sendMessage("Your island has been reset. Use /island home to teleport to your new island.");
+         // Reset the island data to default and rebuild the island
+         island.resetIslandData();
+         island.buildIsland();
 
-        player.teleport(island.getIslandSpawn());
+         player.teleport(island.getIslandSpawn());
     }
 
     /**
@@ -504,7 +524,12 @@ public class IslandManager {
             return;
         }
 
+        if(island.hasBanned(invitedPlayer.getUniqueId())){
+            unbanPlayerFromIsland(player, args);
+        }
+
         sendInvitation(island, invitedPlayer);
+        player.sendMessage("Invitation sent to " + friendName + ".");
     }
 
     /**
@@ -598,6 +623,82 @@ public class IslandManager {
     }
 
     /**
+     * Ban a player from entering the island. If the banned player is a party member, they will also be removed from the party.
+     * @param player
+     * @param args
+     */
+    public void banPlayerFromIsland(Player player, String[] args) {
+        if (args.length < 1) {
+            player.sendMessage("Invalid syntax. Usage: /island ban <player>");
+            return;
+        }
+
+        Island island = getIslandByOwnerUUID(player.getUniqueId());
+        if (island == null) {
+            player.sendMessage("You do not own an island to ban players from.");
+            return;
+        }
+
+        String bannedPlayerName = args[0];
+        OfflinePlayer bannedPlayer = Bukkit.getOfflinePlayer(bannedPlayerName);
+
+        if (bannedPlayer == null) {
+            player.sendMessage(bannedPlayerName + " could not be found.");
+            return;
+        }
+
+        if (island.hasFriend(bannedPlayer.getUniqueId())) {
+            kickPlayerFromIsland(player, args);
+        }
+
+        island.banPlayer(bannedPlayer.getUniqueId());
+        player.sendMessage(bannedPlayerName + " has been banned from the island.");
+
+        if (bannedPlayer.isOnline()) {
+            bannedPlayer.getPlayer().sendMessage("You have been banned from the island by " + player.getName() + ".");
+            bannedPlayer.getPlayer().teleport(Bukkit.getWorld(Main.spawnWorldName).getSpawnLocation());
+        }
+    }
+
+    /**
+     * Unban a player from the island. If the player is not banned, nothing happens.
+     * @param player
+     * @param args - Player name to unban
+     */
+    public void unbanPlayerFromIsland(Player player, String[] args) {
+        if (args.length < 1) {
+            player.sendMessage("Invalid syntax. Usage: /island unban <player>");
+            return;
+        }
+
+        Island island = getIslandByOwnerUUID(player.getUniqueId());
+        if (island == null) {
+            player.sendMessage("You do not own an island to pardon players from.");
+            return;
+        }
+
+        String bannedPlayerName = args[0];
+        OfflinePlayer bannedPlayer = Bukkit.getOfflinePlayer(bannedPlayerName);
+
+        if (bannedPlayer == null) {
+            player.sendMessage(bannedPlayerName + " could not be found.");
+            return;
+        }
+
+        if (!island.hasBanned(bannedPlayer.getUniqueId())) {
+            player.sendMessage(bannedPlayerName + " is not banned from the island.");
+            return;
+        }
+
+        island.unbanPlayer(bannedPlayer.getUniqueId());
+        player.sendMessage(bannedPlayerName + " has been pardoned and may re-enter the island.");
+        
+        if (bannedPlayer.isOnline()) {
+            bannedPlayer.getPlayer().sendMessage("You have been pardoned and may re-enter " + island.getName() + ".");
+        }
+    }
+
+    /**
      * Kick a player from the island party/friends list. The kicked player can no longer build or access the island.
      * @param player
      * @param args - Player name to kick
@@ -628,6 +729,7 @@ public class IslandManager {
         }
 
         island.removeFriend(friend.getUniqueId().toString());
+        resetPlayerData(friend);
 
         player.sendMessage("Player " + friendName + " has been kicked from the island.");
         friend.sendMessage("You have been kicked from the island by " + player.getName() + ".");
