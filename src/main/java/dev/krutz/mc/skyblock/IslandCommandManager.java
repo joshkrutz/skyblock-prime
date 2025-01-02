@@ -1,8 +1,21 @@
 package dev.krutz.mc.skyblock;
 
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 public class IslandCommandManager {
 
@@ -195,7 +208,7 @@ public class IslandCommandManager {
 
         islandCommands.addSubcommand(new CommandInfo(
             "togglewarp",
-            "Activate or deactivate your island's warp.",
+            "Turn island warp on or off.",
             (sender, args) -> { islandManager.toggleWarpLock((Player) sender);})
             .setPlayerOnly(true)
             .setAliases(List.of("tw"))
@@ -224,8 +237,145 @@ public class IslandCommandManager {
             .setRequiredArgs(List.of("player"))
         );
 
+        islandCommands.addSubcommand(new CommandInfo(
+            "help",
+            "Get information on island commands.",
+            (sender, args) -> { sendHelpMenu(sender, args, islandCommands); })
+            .setAliases(List.of("?"))
+            .setRequiredArgs(List.of("page"))
+        );
+
         commandManager.registerCommand(islandCommands);
 
+    }
+
+    private void sendHelpMenu(CommandSender sender, String[] args, SubcommandGroup islandCommands) {
+
+        int page = 1;
+        if (args.length >= 1) {
+            try {
+                page = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+               page = 1;
+            }
+        }
+
+        Component message = Component.text("\n-====== Island Help Menu ======-\n")
+            .color(TextColor.color(NamedTextColor.GREEN))
+            .decoration(TextDecoration.BOLD, true) // Bold the title
+            .append(
+                Component.text("Click to execute a command or read more...\n")
+                    .color(TextColor.color(NamedTextColor.YELLOW))
+                    .decoration(TextDecoration.BOLD, false) // Remove bold for this part
+            );
+
+        Set<CommandInfo> commandSet = new LinkedHashSet<>(islandCommands.getSubcommands().values()); 
+        List<CommandInfo> sortedCommands = new ArrayList<>(commandSet); 
+        Collections.sort(sortedCommands, new Comparator<CommandInfo>() { 
+            @Override public int compare(CommandInfo c1, CommandInfo c2) { 
+                return c1.getBaseCommand().compareTo(c2.getBaseCommand()); 
+            }
+        });
+
+        // Calculate the maximum number of pages
+        int totalCommands = sortedCommands.size();
+        int totalPages = (int) Math.ceil(totalCommands / 5.0);
+        page = Math.max(1, Math.min(page, totalPages));
+        int startIndex = (page - 1) * 5;
+        int endIndex = Math.min(startIndex + 5, totalCommands);
+
+        for (int i = startIndex; i < endIndex; i++) {
+            CommandInfo command = sortedCommands.get(i);
+            if(command.getPermission() != null && !sender.hasPermission(command.getPermission())) continue;
+
+            message = message.append(getCommandComponent(command));
+        }
+
+        message = message.append(
+            Component.text("\n")
+            .append(Component.text("\n<<             ")
+                .decoration(TextDecoration.BOLD, true)
+                .clickEvent(ClickEvent.runCommand("/island help " + Math.max(1, page - 1)))
+                .hoverEvent(HoverEvent.showText(Component.text("Click for previous page.").color(TextColor.color(NamedTextColor.WHITE)))))
+            .append(Component.text("Page ")
+                .decoration(TextDecoration.BOLD, false))
+            .append(Component.text(page)
+                .decoration(TextDecoration.BOLD, false))
+            .append(Component.text("/")
+                .decoration(TextDecoration.BOLD, false))
+            .append(Component.text(totalPages)
+                .decoration(TextDecoration.BOLD, false))
+            .append(Component.text("             >>")
+                .decoration(TextDecoration.BOLD, true)
+                .clickEvent(ClickEvent.runCommand("/island help " + Math.min(totalPages, page + 1)))
+                .hoverEvent(HoverEvent.showText(Component.text("Click for next page").color(TextColor.color(NamedTextColor.WHITE)))))
+                .color(NamedTextColor.YELLOW)
+        );
+
+        sender.sendMessage(message);
+    }
+
+    private Component getAliasesStyled(List<String> aliases){
+        if (aliases.isEmpty()) return Component.empty();
+
+        Component builder = Component.text("\nAliases: ")
+            .color(TextColor.color(NamedTextColor.GOLD));
+        
+        for(String alias : aliases){
+            Component aliasComponent = Component.text(alias)
+                .color(TextColor.color(NamedTextColor.YELLOW));
+
+            if(aliases.indexOf(alias) != aliases.size() - 1){
+                aliasComponent = aliasComponent.append(Component.text(", ").color(NamedTextColor.GOLD));
+            }
+
+            builder = builder.append(aliasComponent);
+        }
+
+        return builder;
+    }
+
+    private Component getArgsComponents(List<String> args){
+        Component builder = Component.empty();
+
+        for(String arg : args){
+            Component argComponent = Component.text(" <" + arg + ">")
+                .color(TextColor.color(NamedTextColor.YELLOW))
+                .decoration(TextDecoration.BOLD, false);
+
+            builder = builder.append(argComponent);
+        }
+
+        return builder;
+    }
+
+    private Component getCommandComponent(CommandInfo command) {
+        Component commandComponent = Component.text("\n  /island " + command.getBaseCommand())
+            .color(TextColor.color(NamedTextColor.BLUE)) // Command color
+            .clickEvent(ClickEvent.suggestCommand("/island " + command.getBaseCommand())) 
+            .hoverEvent(
+                HoverEvent.showText(
+                    Component.text("Click to fast type command.\n\n")
+                        .color(TextColor.color(NamedTextColor.WHITE))
+
+                    // Template Usage
+                    .append(Component.text("Usage: ")
+                        .color(TextColor.color(NamedTextColor.GOLD))
+                        .append(Component.text("/island " + command.getBaseCommand()).color(TextColor.color(NamedTextColor.YELLOW)))
+                        .append(getArgsComponents(command.getRequiredArgs())))
+                    
+                    // Accepted Aliases (if any)
+                    .append(getAliasesStyled(command.getAliases()))
+                )
+            )
+            .decoration(TextDecoration.BOLD, false);
+        
+        Component descriptionComponent = Component.text(" - " + command.getDescription())
+            .color(TextColor.color(NamedTextColor.AQUA)) // Description color
+            .decoration(TextDecoration.BOLD, false);
+
+        return commandComponent.append(descriptionComponent);
+    
     }
 
     // @Override

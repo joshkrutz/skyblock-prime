@@ -62,7 +62,7 @@ public class ServerEssentials {
             .append(getCommandComponent("/list", "List all online players."))
             .append(getCommandComponent("/seen", "Check when a player was last online."))
             .append(getCommandComponent("/home", "Teleport to your home location."))
-            .append(getCommandComponent("/island", "See information about your island."))
+            .append(getCommandComponent("/island help", "Get help with island commands."))
             .append(getCommandComponent("/challenge list", "List all challenges."))
             .append(Component.text("\n"));
 
