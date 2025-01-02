@@ -496,7 +496,7 @@ public class IslandManager {
         }
 
         // Check if island warp is open
-        if(island.isLocked()){
+        if(island.isLocked() && !island.hasFriend(player.getUniqueId()) && !island.hasOwner(player.getUniqueId())){
             player.sendMessage(targetPlayer.getName() + "'s island warp is not open.");
             return;
         }
@@ -582,6 +582,11 @@ public class IslandManager {
             return;
         }
 
+        if(island.isLocked()){
+            player.sendMessage("Island warp is already unlocked.");
+            return;
+        }
+
         island.unlockIsland();
         player.sendMessage("Island warp is now unlocked.");
     }
@@ -594,6 +599,11 @@ public class IslandManager {
         Island island = getIslandByPlayerUUID(player.getUniqueId());
         if(island == null){
             player.sendMessage("You do not have an island to use this command on.");
+            return;
+        }
+
+        if(island.isLocked()){
+            player.sendMessage("Island warp is already locked.");
             return;
         }
 

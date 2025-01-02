@@ -112,29 +112,40 @@ public class IslandListener implements Listener {
     public void onPlayerTeleport(PlayerTeleportEvent event){
         Location to = event.getTo();
 
-        // If teleport location is to a banned island, cancel the teleport
-        if(to.getWorld().getName().equals(Main.spawnWorldName)) return;
-        Island toIsland = getIslandAtLocation(islandManager.getAllIslands(), to);
+        if (to.getWorld().getName().equals(Main.skyblockWorldName)){
+            // If teleport location is to a banned island, cancel the teleport
+            Island toIsland = getIslandAtLocation(islandManager.getAllIslands(), to);
 
-        // Check if player is banned from the island
-        if (toIsland != null && toIsland.hasBanned(event.getPlayer().getUniqueId())) {
-            event.setCancelled(true);
-            event.getPlayer().sendMessage("You are barred from entering " + toIsland.getName() + ".");
-            return;
+            // If teleport location is not an island, cancel the teleport
+            if( toIsland == null){
+                event.setCancelled(true);
+                event.getPlayer().sendMessage("You cannot teleport to this location.");
+                return;
+            }
+
+            // Check if player is banned from the island
+            if (toIsland.hasBanned(event.getPlayer().getUniqueId())) {
+                event.setCancelled(true);
+                event.getPlayer().sendMessage("You are barred from entering " + toIsland.getName() + ".");
+                return;
+            }
+
+            boolean playerIsOwner = toIsland.getOwnerUUID().equals(event.getPlayer().getUniqueId());
+            boolean playerIsFriend = toIsland.hasFriend(event.getPlayer().getUniqueId());
+
+            // Check if island is locked
+            if (toIsland.isLocked() && !playerIsOwner && !playerIsFriend) {
+                event.setCancelled(true);
+                event.getPlayer().sendMessage("This island is locked. You cannot enter.");
+                return;
+            }
+
         }
 
-        // Check if island is locked
-        if (toIsland != null && toIsland.isLocked()) {
-            event.setCancelled(true);
-            event.getPlayer().sendMessage("This island is locked. You cannot enter.");
-            return;
-        }
+        // Check, update, and send messages for island entry/exit
+        checkEnterExitIsland(event.getPlayer(), to);
 
-
-        // Check if location is safe
-        Location safeLocation = findSafeLocation(to);
-
-        event.setTo(safeLocation);
+        event.setTo(findSafeLocation(to));
     }
 
     /**
@@ -146,28 +157,14 @@ public class IslandListener implements Listener {
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
 
-        if(player.getLocation().getWorld().getName().equals(Main.spawnWorldName)) return;
-
         Location to = event.getTo();
 
         if (to == null) return;
-
-        if(!to.getWorld().getName().equals(Main.skyblockWorldName)) return;
             
-        Island currentIsland = getIslandAtLocation(islandManager.getAllIslands(), to);
-        Island lastIsland = lastIslandMap.get(player);
+        // Check, update, and send messages for island entry/exit
+        checkEnterExitIsland(player, to);
 
-        if (currentIsland != lastIsland) {
-            if (lastIsland != null) {
-                // Player left the last island
-                player.sendMessage(lastIsland.getFarewellMessage());
-            }
-            if (currentIsland != null) {
-                // Player entered a new island
-                player.sendMessage(currentIsland.getGreetingMessage());
-            }
-            lastIslandMap.put(player, currentIsland);
-        }
+        Island currentIsland = getIslandAtLocation(islandManager.getAllIslands(), to);
 
         // If player is on a banned island, send them to spawn
         if (currentIsland != null && currentIsland.hasBanned(player.getUniqueId())) {
@@ -177,7 +174,12 @@ public class IslandListener implements Listener {
         }
 
         // If island is locked, send them to spawn
-        if (currentIsland != null && currentIsland.isLocked()) {
+        if (currentIsland.isLocked() && currentIsland != null) {
+            boolean playerIsOwner = currentIsland.getOwnerUUID().equals(event.getPlayer().getUniqueId());
+            boolean playerIsFriend = currentIsland.hasFriend(event.getPlayer().getUniqueId());
+
+            if (playerIsOwner || playerIsFriend) return;
+
             player.sendMessage(Component.text("This island is locked. You cannot enter.").color(NamedTextColor.RED));
             player.teleport(Bukkit.getWorld(Main.spawnWorldName).getSpawnLocation());
             event.setCancelled(true);
@@ -366,6 +368,8 @@ public class IslandListener implements Listener {
             islandCenter.setY(from.getY());
             double radiusSquared = island.getRadius() * island.getRadius();  
 
+            if (!from.getWorld().getName().equals(islandCenter.getWorld().getName())) continue;
+
             if(islandCenter.distanceSquared(from) < radiusSquared) {
                 return island;
             }
@@ -457,6 +461,28 @@ public class IslandListener implements Listener {
 
         double radiusSquared = island.getRadius() * island.getRadius();
         return islandCenter.distanceSquared(location) < radiusSquared;
+    }
+
+    private void checkEnterExitIsland(Player player, Location to) {
+        Island currentIsland = getIslandAtLocation(islandManager.getAllIslands(), to);
+        Island lastIsland = lastIslandMap.get(player);
+
+        if (currentIsland != lastIsland) {
+            if (lastIsland != null) {
+                // Player left the last island
+                player.sendMessage(lastIsland.getFarewellMessage());
+            }
+            if (currentIsland != null) {
+                // Player entered a new island
+                player.sendMessage(currentIsland.getGreetingMessage());
+            }
+            lastIslandMap.put(player, currentIsland);
+        }
+
+        if (currentIsland == null) {
+            lastIslandMap.remove(player);
+            return;
+        }
     }
 
     //TODO if not on friends or the owner, prevent damaging, set to adventure mode

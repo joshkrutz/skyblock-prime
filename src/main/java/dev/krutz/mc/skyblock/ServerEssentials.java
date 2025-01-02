@@ -73,7 +73,6 @@ public class ServerEssentials {
         World spawnWorld = Bukkit.getServer().getWorld(Main.spawnWorldName);
         if (spawnWorld != null) {
             player.teleport(spawnWorld.getSpawnLocation());
-            player.sendMessage("You have been teleported to the spawn world.");
         } else {
             player.sendMessage("The spawn world is not loaded or does not exist.");
         }
