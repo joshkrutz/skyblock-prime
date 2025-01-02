@@ -6,7 +6,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -447,7 +446,7 @@ public class IslandManager {
         }
 
         // Check if player is in friend list
-        if(!island.getFriends().contains(friend.getUniqueId().toString())){
+        if(!island.getFriends().contains(new IslandFriend(friend.getUniqueId()))){
             player.sendMessage("Player " + friendName + " does not have access to this island.");
             return;
         }

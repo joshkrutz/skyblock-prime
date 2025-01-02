@@ -14,7 +14,6 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -24,9 +23,7 @@ import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -174,7 +171,7 @@ public class IslandListener implements Listener {
         }
 
         // If island is locked, send them to spawn
-        if (currentIsland.isLocked() && currentIsland != null) {
+        if (currentIsland != null && currentIsland.isLocked()) {
             boolean playerIsOwner = currentIsland.getOwnerUUID().equals(event.getPlayer().getUniqueId());
             boolean playerIsFriend = currentIsland.hasFriend(event.getPlayer().getUniqueId());
 

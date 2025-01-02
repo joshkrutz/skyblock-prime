@@ -428,7 +428,7 @@ public class Island {
      * @return True if the player is a friend, false otherwise
      */
     public boolean hasFriend(UUID playerUUID){
-        return friends.contains(playerUUID.toString());
+        return friends.contains(new IslandFriend(playerUUID));
     }
 
     /**
@@ -437,7 +437,7 @@ public class Island {
      * @return True if the player is the owner, false otherwise
      */
     public boolean hasOwner(UUID playerUUID){
-        return ownerUUID.equals(playerUUID.toString());
+        return ownerUUID.equals(playerUUID);
     }
 
     /**
@@ -446,7 +446,7 @@ public class Island {
      * @return True if the player is banned, false otherwise
      */
     public boolean hasBanned(UUID uniqueId) {
-        return banList.contains(uniqueId.toString());
+        return banList.contains(uniqueId);
     }
 
     ////////////////////////////////////////////////////////////
