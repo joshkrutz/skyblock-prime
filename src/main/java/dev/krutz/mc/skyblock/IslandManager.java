@@ -1,11 +1,14 @@
 package dev.krutz.mc.skyblock;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +19,7 @@ import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.block.Biome;
@@ -38,6 +42,7 @@ public class IslandManager {
 
     // Configurable values
     private static final String ISLANDS_FILE = "island-data.json"; // Path to your islands data file
+    private static final String BLOCK_WEIGHTS_FILE = "block-weights.yaml"; // Path to your block weights data file
     private static final long SCORE_TASK_INTERVAL = 100L; // Interval in ticks to calculate island scores
     private static final long SAVE_TASK_INTERVAL = 20 * 60 * 5; // Interval in ticks to save island data to file
     private static final long INVITATION_EXPIRATION_TIME = 20 * 30; // Time in ticks before an invitation expires
@@ -93,6 +98,7 @@ public class IslandManager {
 
         startAsyncTasks();
         loadData();
+        loadBlockWeights();
     }
 
     /**
@@ -148,7 +154,22 @@ public class IslandManager {
             plugin.getLogger().info("Creating plugin data folder...");
             dataFolder.mkdir();
         }
-        return new File(dataFolder, ISLANDS_FILE);
+
+        return  new File(dataFolder, ISLANDS_FILE);
+    }
+
+    /**
+     * Get the file where island data is stored. ISLANDS_FILE is configured in the config.
+     * @return File object representing the island data file
+     */
+    private File getBlockWeightsFile() {
+        File configFile = new File(plugin.getDataFolder(), "block-weights.yaml");
+        if (!configFile.exists()) {
+            plugin.saveResource("block-weights.yaml", false);
+            plugin.getLogger().info("block-weights.yaml created in plugin directory.");
+        }
+
+        return configFile;
     }
 
     /**
@@ -171,6 +192,43 @@ public class IslandManager {
             e.printStackTrace();
         }
 
+    }
+
+    /**
+     * Load block weights from file and populate the block weights map.
+     */
+    private void loadBlockWeights() {
+        Map<Material, Double> blockWeights = new HashMap<>();
+        // YAML file
+        try (FileReader reader = new FileReader(getBlockWeightsFile())) 
+        { 
+            // Line by line
+            BufferedReader bufferedReader = new BufferedReader(reader);
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                // Get block name and weight from the line
+                String[] parts = line.split(":");
+                if (parts.length != 2) {
+                    plugin.getLogger().warning("Invalid line in block-weights.yaml: " + line);
+                    continue;
+                }
+
+                Material material = Material.getMaterial(parts[0].toUpperCase());
+                if (material == null) {
+                    plugin.getLogger().warning("Invalid block name in block-weights.yaml: " + parts[0]);
+                    continue;
+                }
+
+                double blockWeight = Double.parseDouble(parts[1]);
+                
+                blockWeights.put(material, blockWeight);
+            }
+
+            Island.setBlockWeights(blockWeights);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**

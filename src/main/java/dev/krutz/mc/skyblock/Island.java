@@ -39,7 +39,7 @@ public class Island {
     private static final double SPAWN_OFFSET_Z = 0.5;
     private static final float SPAWN_OFFSET_YAW = 90;
     private static final float SPAWN_OFFSET_PITCH = 0;
-    private static final Map<Material, Double> BLOCK_WEIGHTS = new HashMap<>();
+    private static Map<Material, Double> BLOCK_WEIGHTS = new HashMap<>();
     private static final double DEFAULT_BLOCK_WEIGHT = 0.01;
 
     // Constants that are not configurable
@@ -68,6 +68,10 @@ public class Island {
     private boolean isModified = false;
     private double score = 0;
     private Map<String, Double> scoreBreakdown = new HashMap<>();
+
+    public static synchronized void setBlockWeights(Map<Material, Double> blockWeights) {
+        BLOCK_WEIGHTS = blockWeights;
+    }
 
     /** 
     * Islands instantiated with this constructor are assumed to be loaded from file
