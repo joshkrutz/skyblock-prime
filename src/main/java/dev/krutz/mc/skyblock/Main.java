@@ -30,7 +30,7 @@ public class Main extends JavaPlugin {
          if (getServer().getWorld(skyblockWorldName) == null) {
             WorldCreator worldCreator = new WorldCreator(skyblockWorldName);
             worldCreator.environment(World.Environment.NORMAL);
-            worldCreator.type(WorldType.NORMAL);
+            worldCreator.type(WorldType.FLAT);
             worldCreator.generator(new SkyblockWorldGenerator());
             worldCreator.createWorld();
         }
@@ -59,6 +59,7 @@ public class Main extends JavaPlugin {
             islandManager.saveData();
         
         getLogger().info("Skyblock plugin has been disabled!");
+        
         // Cleanup resources or save data here.
         getServer().getScheduler().cancelTasks(this);
 

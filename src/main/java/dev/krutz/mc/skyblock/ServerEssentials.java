@@ -100,7 +100,6 @@ public class ServerEssentials {
             loc = player.getWorld().getSpawnLocation();
         }
         player.teleport(loc);
-        player.sendMessage("You have been teleported to your home location.");
     }
 
     

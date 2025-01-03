@@ -24,6 +24,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -48,6 +49,9 @@ public class IslandManager {
     private Map<String, Island> islandInvites = new ConcurrentHashMap<>();
     private Map<Integer, Double> islandScores = new ConcurrentHashMap<>();
 
+    private BukkitTask taskScore;
+    private BukkitTask taskAutosave;
+
     /**
      * Get the instance of the IslandManager singleton.
      * @param plugin - JavaPlugin instance (usually the main class of your plugin)
@@ -59,6 +63,23 @@ public class IslandManager {
             instance = new IslandManager(plugin);
         }
         return instance;
+    }
+
+    /**
+     * Cancel all tasks
+     */
+    public static synchronized void cancelTasks() {
+        if (instance != null) {
+            instance.plugin.getServer().getScheduler().cancelTasks(instance.plugin);
+
+            if (instance.taskScore != null) {
+                instance.taskScore.cancel();
+            }
+
+            if (instance.taskAutosave != null) {
+                instance.taskAutosave.cancel();
+            }
+        }
     }
 
     /**
@@ -94,7 +115,7 @@ public class IslandManager {
      * This value can be changed in the config.
      */
     public void calculateIslandScoresAsync() {
-        new BukkitRunnable() {
+        taskScore = new BukkitRunnable() {
             @Override
             public void run() {
                 for (Island island : islands.values()) {
@@ -109,7 +130,7 @@ public class IslandManager {
      * Automatically save island data to file every SAVE_TASK_INTERVAL minutes.
      */
     public void saveDataToFileAsync() {
-        new BukkitRunnable() {
+        taskAutosave = new BukkitRunnable() {
             @Override
             public void run() {
                 saveData();
@@ -394,8 +415,9 @@ public class IslandManager {
      * @param player
      */
     public void createIsland(Player player) {
-        boolean playerBelongsToIsland = getIslandByPlayerUUID(player.getUniqueId()) != null;
-        boolean playerOwnsIsland = getIslandByOwnerUUID(player.getUniqueId()) != null;
+        Island oldIsland = getIslandByPlayerUUID(player.getUniqueId());
+        boolean playerOwnsIsland = oldIsland != null && oldIsland.hasOwner(player.getUniqueId());
+        boolean playerBelongsToIsland = oldIsland != null;
 
         if (playerBelongsToIsland && !playerOwnsIsland) {
             player.sendMessage("You must leave this island before creating a new one. Use /island leave to leave this island.");
@@ -446,7 +468,7 @@ public class IslandManager {
         }
 
         // Check if player is in friend list
-        if(!island.getFriends().contains(new IslandFriend(friend.getUniqueId()))){
+        if(!island.hasFriend(friend.getUniqueId())){
             player.sendMessage("Player " + friendName + " does not have access to this island.");
             return;
         }
@@ -769,8 +791,20 @@ public class IslandManager {
             return;
         }
 
+        // Prevent banning self
+        if (bannedPlayer.getUniqueId().equals(player.getUniqueId())) {
+            player.sendMessage("You cannot ban yourself from the island.");
+            return;
+        }
+
         if (island.hasFriend(bannedPlayer.getUniqueId())) {
             kickPlayerFromIsland(player, args);
+        }
+
+        // If player is already banned, do nothing
+        if (island.hasBanned(bannedPlayer.getUniqueId())) {
+            player.sendMessage(bannedPlayerName + " is already banned from the island.");
+            return;
         }
 
         island.banPlayer(bannedPlayer.getUniqueId());
@@ -778,7 +812,6 @@ public class IslandManager {
 
         if (bannedPlayer.isOnline()) {
             bannedPlayer.getPlayer().sendMessage("You have been banned from the island by " + player.getName() + ".");
-            bannedPlayer.getPlayer().teleport(Bukkit.getWorld(Main.spawnWorldName).getSpawnLocation());
         }
     }
 
@@ -869,12 +902,15 @@ public class IslandManager {
             return;
         }
 
-        if (island.getOwnerUUID().equals(player.getUniqueId())) {
+        if (island.hasOwner(player.getUniqueId())){
             player.sendMessage("You cannot leave an island that you own. Use /is promote to transfer leadership. Or use /is restart to restart.");
             return;
         }
 
         island.removeFriend(player.getUniqueId());
+
+        // Reset player's state
+        resetPlayerData(player);
 
         player.sendMessage("You have left " + island.getName() + ".");
         player.teleport(Bukkit.getWorld(Main.spawnWorldName).getSpawnLocation());

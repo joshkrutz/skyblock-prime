@@ -55,7 +55,7 @@ public class Island {
     @Expose @SerializedName("z") private final int z;
     @Expose @SerializedName("name") private String name;
     @Expose @SerializedName("index") private final int index;
-    @Expose @SerializedName("owner") private String ownerUUID;
+    @Expose @SerializedName("owner") private UUID ownerUUID;
     @Expose @SerializedName("friends") private List<IslandFriend> friends;
     @Expose @SerializedName("ban_list") private List<UUID> banList;
     @Expose @SerializedName("greeting_message") private String enterMessage;
@@ -73,7 +73,7 @@ public class Island {
     * Islands instantiated with this constructor are assumed to be loaded from file
     * The modified flag is set to false because the island is not modified after loading
     */
-    public Island(int x, int z, String name, int index, String ownerUUID, List<IslandFriend> friends, List<UUID> banList, String enterMessage, String exitMessage, Location islandSpawn, Location islandWarp, boolean isLocked) {
+    public Island(int x, int z, String name, int index, UUID ownerUUID, List<IslandFriend> friends, List<UUID> banList, String enterMessage, String exitMessage, Location islandSpawn, Location islandWarp, boolean isLocked) {
         this.x = x;
         this.z = z;
         this.name = name;
@@ -99,7 +99,7 @@ public class Island {
         float chunksZ = (((index / MAX_ISLANDS_PER_ROW) + 1) * CHUNK_BUFFER) + ((index / MAX_ISLANDS_PER_ROW) * 2 + 1) * CHUNK_ISLAND_RADIUS;
         x = ChunkToBlock(chunksX) + BLOCKS_PER_CHUNK / 2;
         z = ChunkToBlock(chunksZ) + BLOCKS_PER_CHUNK / 2;
-        ownerUUID = player.getUniqueId().toString();
+        ownerUUID = player.getUniqueId();
         clearIslandBlocks();
         resetIslandData();
     }
@@ -428,7 +428,13 @@ public class Island {
      * @return True if the player is a friend, false otherwise
      */
     public boolean hasFriend(UUID playerUUID){
-        return friends.contains(new IslandFriend(playerUUID));
+        // Check if friends has key with playerUUID
+        for (IslandFriend friend : friends) {
+            if (friend.getUUID().equals(playerUUID)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -478,18 +484,26 @@ public class Island {
     public ArrayList<Chunk> getChunks(){
         ArrayList<Chunk> chunks = new ArrayList<>();
 
-        // Get the center of the island
         Location center = getIslandCenter();
-        
-        World SKYBLOCK_WORLD = center.getWorld();
 
-        // Calculate the chunk-aligned starting X and Z
-        int startX = (center.getBlockX() - BLOCKS_PER_CHUNK / 2) - ChunkToBlock(CHUNK_ISLAND_RADIUS);
-        int startZ = (center.getBlockZ() - BLOCKS_PER_CHUNK / 2) - ChunkToBlock(CHUNK_ISLAND_RADIUS);
+        // Calculate chunk coordinates for the center of the island
+        int centerChunkX = center.getBlockX() >> 4;
+        int centerChunkZ = center.getBlockZ() >> 4;
 
-        for (int x = startX; x < startX + ((int) (CHUNK_ISLAND_RADIUS * BLOCKS_PER_CHUNK)) * 2; x += BLOCKS_PER_CHUNK) {
-            for (int z = startZ; z < startZ + ((int) (CHUNK_ISLAND_RADIUS * BLOCKS_PER_CHUNK)) * 2; z += BLOCKS_PER_CHUNK) {
-                chunks.add(SKYBLOCK_WORLD.getChunkAt(x / BLOCKS_PER_CHUNK, z / BLOCKS_PER_CHUNK));
+        // Calculate the number of chunks in each direction (rounded up)
+        int chunkRadius = (int) Math.ceil(CHUNK_ISLAND_RADIUS);
+
+        // Loop through chunk coordinates in the square region
+        for (int x = centerChunkX - chunkRadius; x <= centerChunkX + chunkRadius; x++) {
+            for (int z = centerChunkZ - chunkRadius; z <= centerChunkZ + chunkRadius; z++) {
+                // Calculate the distance from the center chunk to this chunk
+                double distance = Math.sqrt(Math.pow(x - centerChunkX, 2) + Math.pow(z - centerChunkZ, 2));
+
+                // Add the chunk if it's within the radius
+                if (distance <= CHUNK_ISLAND_RADIUS) {
+                    Chunk chunk = center.getWorld().getChunkAt(x, z);
+                    chunks.add(chunk);
+                }
             }
         }
 
@@ -517,11 +531,11 @@ public class Island {
      */
     public void resetIslandData(){
         
-        Player player = Bukkit.getPlayer(UUID.fromString(ownerUUID));
+        Player player = Bukkit.getPlayer(ownerUUID);
         name = player.getName() + "\'s Island";
         enterMessage = "Welcome to " + name;
         exitMessage = "Now leaving " + name;
-        ownerUUID = player.getUniqueId().toString();
+        ownerUUID = player.getUniqueId();
         friends = new ArrayList<>();
         banList = new ArrayList<>();
         setIslandSpawn();
@@ -624,7 +638,12 @@ public class Island {
      * @param friendUUID String UUID of the friend to remove
      */
     public void removeFriend(UUID friendUUID){
-        friends.remove(new IslandFriend(friendUUID));
+        for(IslandFriend friend : friends){
+            if(friend.getUUID().equals(friendUUID)){
+                friends.remove(friend);
+                break;
+            }
+        }
         isModified = true;
     }
 
@@ -726,16 +745,7 @@ public class Island {
      * @return owner UUID
      */
     public UUID getOwnerUUID(){
-        return UUID.fromString(ownerUUID);
-    }
-
-    /**
-     * Set the owner of the island
-     * @param newOwnerUUID String UUID of the new owner
-     */
-    public void setOwnerUUID(String newOwnerUUID){
-        this.ownerUUID = newOwnerUUID;
-        isModified = true;
+        return ownerUUID;
     }
 
     /**
@@ -743,7 +753,8 @@ public class Island {
      * @param newOwnerUUID
      */
     public void setOwnerUUID(UUID newOwnerUUID) {
-        setOwnerUUID(newOwnerUUID.toString());
+        ownerUUID = newOwnerUUID;
+        isModified = true;
     }
 }
 

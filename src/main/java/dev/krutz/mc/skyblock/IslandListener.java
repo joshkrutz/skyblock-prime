@@ -113,25 +113,15 @@ public class IslandListener implements Listener {
             // If teleport location is to a banned island, cancel the teleport
             Island toIsland = getIslandAtLocation(islandManager.getAllIslands(), to);
 
-            // If teleport location is not an island, cancel the teleport
-            if( toIsland == null){
-                event.setCancelled(true);
-                event.getPlayer().sendMessage("You cannot teleport to this location.");
-                return;
-            }
-
             // Check if player is banned from the island
-            if (toIsland.hasBanned(event.getPlayer().getUniqueId())) {
+            if (toIsland != null && toIsland.hasBanned(event.getPlayer().getUniqueId())) {
                 event.setCancelled(true);
                 event.getPlayer().sendMessage("You are barred from entering " + toIsland.getName() + ".");
                 return;
             }
-
-            boolean playerIsOwner = toIsland.getOwnerUUID().equals(event.getPlayer().getUniqueId());
-            boolean playerIsFriend = toIsland.hasFriend(event.getPlayer().getUniqueId());
-
+            
             // Check if island is locked
-            if (toIsland.isLocked() && !playerIsOwner && !playerIsFriend) {
+            if (toIsland != null && toIsland.isLocked() && !toIsland.hasOwner(event.getPlayer().getUniqueId()) && !toIsland.hasFriend(event.getPlayer().getUniqueId())) {
                 event.setCancelled(true);
                 event.getPlayer().sendMessage("This island is locked. You cannot enter.");
                 return;
@@ -166,7 +156,6 @@ public class IslandListener implements Listener {
         // If player is on a banned island, send them to spawn
         if (currentIsland != null && currentIsland.hasBanned(player.getUniqueId())) {
             player.sendMessage(Component.text("You are barred from entering " + currentIsland.getName() + ".").color(NamedTextColor.RED));
-            player.teleport(Bukkit.getWorld(Main.spawnWorldName).getSpawnLocation());
             event.setCancelled(true);
         }
 
@@ -178,7 +167,6 @@ public class IslandListener implements Listener {
             if (playerIsOwner || playerIsFriend) return;
 
             player.sendMessage(Component.text("This island is locked. You cannot enter.").color(NamedTextColor.RED));
-            player.teleport(Bukkit.getWorld(Main.spawnWorldName).getSpawnLocation());
             event.setCancelled(true);
         }
     }
