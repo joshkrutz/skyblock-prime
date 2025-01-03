@@ -722,6 +722,7 @@ public class IslandManager {
             // If player is the owner, delete the island
             if (currentIsland.getOwnerUUID().equals(player.getUniqueId())) {
                 islands.remove(currentIsland.getIndex());
+                islandScores.remove(currentIsland.getIndex());
             } else {
                 // Remove player from friends list
                 currentIsland.removeFriend(player.getUniqueId());
@@ -1050,7 +1051,7 @@ public class IslandManager {
             .sorted(Map.Entry.<Integer, Double>comparingByValue().reversed())
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
 
-        int numTop = Math.min(NUM_ISLANDS_IN_TOP_ISLANDS_MESSAGE, islandScores.size());
+        int numTop = Math.min(NUM_ISLANDS_IN_TOP_ISLANDS_MESSAGE, islands.size());
 
         sender.sendMessage("Top " + numTop + " Islands:");
         int i = 0;
