@@ -38,6 +38,11 @@ public class CommandInfo {
         return aliases;
     }
 
+    // Get the args for the command in sequential order
+    // The following are reserved Strings:
+    // All Players - Will substitute for all online/offline players
+    // Online Players - Will substitute for all online players
+    // Biomes - Will substitute for a biome name
     public List<String> getRequiredArgs() {
         return requiredArgs;
     }

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
@@ -68,6 +69,11 @@ public class Main extends JavaPlugin {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         return commandManager.executeCommand(sender, label, args);
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args){
+        return commandManager.getTabComplete(sender, command, label, args);
     }
 
     private void ensureChallengesFileExists() {

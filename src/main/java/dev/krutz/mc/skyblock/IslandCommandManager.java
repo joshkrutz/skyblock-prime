@@ -48,7 +48,7 @@ public class IslandCommandManager {
              "Ban a player from your island", 
              (sender, args) -> { islandManager.banPlayerFromIsland((Player) sender, args);})
             .setPlayerOnly(true)
-            .setRequiredArgs(List.of("player"))
+            .setRequiredArgs(List.of("All Players"))
         );
 
         islandCommands.addSubcommand(new CommandInfo(
@@ -69,7 +69,7 @@ public class IslandCommandManager {
             "info",
             "Check your or another player's island info.",
             (sender, args) -> { islandManager.showIslandInfo(sender, args);})
-            .setRequiredArgs(List.of("player"))
+            .setRequiredArgs(List.of("All Players"))
             .setAliases(List.of("level"))
         );
 
@@ -78,7 +78,7 @@ public class IslandCommandManager {
             "Invite a player to your island.",
             (sender, args) -> {islandManager.invitePlayerToIsland((Player) sender, args);})
             .setPlayerOnly(true)
-            .setRequiredArgs(List.of("player"))
+            .setRequiredArgs(List.of("Online Players"))
         );
 
         islandCommands.addSubcommand(new CommandInfo(
@@ -86,7 +86,7 @@ public class IslandCommandManager {
             "Kick a player from your island.",
             (sender, args) -> {islandManager.kickPlayerFromIsland((Player) sender, args);})
             .setPlayerOnly(true)
-            .setRequiredArgs(List.of("player"))
+            .setRequiredArgs(List.of("All Players"))
             .setAliases(List.of("remove"))
         );
 
@@ -134,7 +134,7 @@ public class IslandCommandManager {
             null)
             .setPlayerOnly(true)
             .setAliases(List.of("perms"))
-            .setRequiredArgs(List.of("player"))
+            .setRequiredArgs(List.of("All Players"))
         );
 
         islandCommands.addSubcommand(new CommandInfo(
@@ -157,7 +157,7 @@ public class IslandCommandManager {
             "Set your island biome.",
             (sender, args) -> { islandManager.setIslandBiome((Player) sender, args);})
             .setPlayerOnly(true)
-            .setRequiredArgs(List.of("biome"))
+            .setRequiredArgs(List.of("Biomes"))
         );
 
         islandCommands.addSubcommand(new CommandInfo(
@@ -203,7 +203,7 @@ public class IslandCommandManager {
                 (sender, args) -> {islandManager.teleportToIslandFriend((Player) sender, args);})
                 .setPlayerOnly(true)
                 .setAliases(List.of("tp"))
-                .setRequiredArgs(List.of("friend"))
+                .setRequiredArgs(List.of("Online Players"))
         );
 
         islandCommands.addSubcommand(new CommandInfo(
@@ -225,7 +225,7 @@ public class IslandCommandManager {
             "Unban a player from your island.",
             (sender, args) -> { islandManager.unbanPlayerFromIsland((Player) sender, args);})
             .setPlayerOnly(true)
-            .setRequiredArgs(List.of("player"))
+            .setRequiredArgs(List.of("All Players"))
             .setAliases(List.of("pardon"))
         );
 
@@ -234,7 +234,7 @@ public class IslandCommandManager {
             "Warp to your or another player's island.",
             (sender, args) -> { islandManager.warpTeleport((Player) sender, args);})
             .setPlayerOnly(true)
-            .setRequiredArgs(List.of("player"))
+            .setRequiredArgs(List.of("All Players"))
         );
 
         islandCommands.addSubcommand(new CommandInfo(
@@ -377,60 +377,4 @@ public class IslandCommandManager {
         return commandComponent.append(descriptionComponent);
     
     }
-
-    // @Override
-    // public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-    //     if (args.length == 0) {
-    //         if (sender instanceof Player player) {
-    //             new IslandListener().openIslandMenu(player);
-    //         } else {
-    //             sender.sendMessage("This command can only be executed by players.");
-    //         }
-    //         return true;
-    //     }
-
-    //     String subcommandName = args[0].toLowerCase();
-    //     CommandInfo subcommand = islandCommands.getSubcommand(subcommandName);
-
-    //     // Check aliases
-    //     if (subcommand == null) {
-    //         for (CommandInfo cmd : islandCommands.getSubcommands().values()) {
-    //             if (cmd.getAliases().contains(subcommandName)) {
-    //                 subcommand = cmd;
-    //                 break;
-    //             }
-    //         }
-    //     }
-
-    //     if (subcommand == null) {
-    //         sender.sendMessage(Component.text("Unknown " + command.getName() + " subcommand: " + args[0]).color(NamedTextColor.RED));
-    //         return true;
-    //     }
-
-    //     if (subcommand.isPlayerOnly() && !(sender instanceof Player)) {
-    //         sender.sendMessage(Component.text("This command can only be executed by players.").color(NamedTextColor.RED));
-    //         return true;
-    //     }
-
-    //     if (subcommand.getPermission() != null && !sender.hasPermission(subcommand.getPermission())) {
-    //         sender.sendMessage(Component.text("You don't have permission to execute this command.").color(NamedTextColor.RED));
-    //         return true;
-    //     }
-
-    //     // Validate required arguments
-    //     if (args.length - 1 < subcommand.getRequiredArgs().size()) {
-    //         sender.sendMessage(
-    //             Component.text("Invalid syntax! Try: ").color(NamedTextColor.WHITE).append(
-    //                 Component.text("/" + islandCommands.getBaseCommand() + " " + subcommand.getBaseCommand()).color(NamedTextColor.GOLD).append(
-    //                     Component.text(" " + String.join(" ", 
-    //                         subcommand.getRequiredArgs().stream()
-    //                             .map(arg -> "<" + arg + ">")  // Wrap each argument in angle brackets
-    //                             .toArray(String[]::new))).color(NamedTextColor.RED)).append(Component.text(".").color(NamedTextColor.WHITE))));
-    //         return true;
-    //     }
-
-    //     // Execute the subcommand action
-    //     subcommand.getAction().accept(sender, args);
-    //     return true;
-    // }
 }

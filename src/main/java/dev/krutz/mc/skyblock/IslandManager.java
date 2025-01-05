@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -42,7 +41,6 @@ public class IslandManager {
 
     // Configurable values
     private static final String ISLANDS_FILE = "island-data.json"; // Path to your islands data file
-    private static final String BLOCK_WEIGHTS_FILE = "block-weights.yaml"; // Path to your block weights data file
     private static final long SCORE_TASK_INTERVAL = 100L; // Interval in ticks to calculate island scores
     private static final long SAVE_TASK_INTERVAL = 20 * 60 * 5; // Interval in ticks to save island data to file
     private static final long INVITATION_EXPIRATION_TIME = 20 * 30; // Time in ticks before an invitation expires
@@ -1086,12 +1084,17 @@ public class IslandManager {
             if(i >= 10)
                 break;
             String key = entry.getKey();
+            Material material = Material.getMaterial(key);
+            if(material == null){
+                continue;
+            }
+            Double block_weight = Island.getBlockWeight(material);
             String block_key = key.replace("_", " ");
             String[] words = block_key.split(" ");
             words = Arrays.stream(words).map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase()).toArray(String[]::new);
             block_key = String.join(" ", words);
 
-            sender.sendMessage("* " + block_key + ": " + String.format("%.2f", entry.getValue()));
+            sender.sendMessage("* " + block_key + ": " + String.format("%.2f", entry.getValue()) + " (" + String.format("%.2f", block_weight) + " each)");
             i++;
         }
     }

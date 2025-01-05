@@ -73,6 +73,11 @@ public class Island {
         BLOCK_WEIGHTS = blockWeights;
     }
 
+    public static synchronized Double getBlockWeight(Material blockType) {
+        Double weight = BLOCK_WEIGHTS.get(blockType);
+        return weight != null ? weight : DEFAULT_BLOCK_WEIGHT;
+    }
+
     /** 
     * Islands instantiated with this constructor are assumed to be loaded from file
     * The modified flag is set to false because the island is not modified after loading
